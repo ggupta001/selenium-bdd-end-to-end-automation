@@ -35,6 +35,7 @@ public class RegisterPageTest extends WebDriverManagerUtils {
     }
     @When("User filled all the details")
     public void user_filled_all_the_details() {
+        driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(5));
         rpage.fillDetails(firstName,LastName,add,cityName,
                 stateName,zip,phone,SSN,uName,pass,cPass);
     }
