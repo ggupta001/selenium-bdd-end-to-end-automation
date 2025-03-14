@@ -22,8 +22,8 @@ public class LoginPageTest extends WebDriverManagerUtils {
     @When("user enter username and password")
     public void user_enter_username_and_password() {
         // Fetch username and password from environment variables
-        final String userName = System.getenv("MY_API_KEY"); // Fetch from environment variable
-        final String password = System.getenv("DB_PASSWORD"); // Fetch from environment variable
+        final String userName = System.getenv("USER_NAME"); // Fetch from environment variable
+        final String password = System.getenv("USER_PASSWORD"); // Fetch from environment variable
 
         if (userName == null || password == null) {
             throw new IllegalArgumentException("Username or password is missing from the environment variables");
