@@ -31,10 +31,11 @@ public class RegisterPageTest extends WebDriverManagerUtils {
         driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(5));
         String url=configProperties.getProperty("url");
         driver.get(url);
-        rpage.clickOnRegisterButton();
+
     }
     @When("User filled all the details")
     public void user_filled_all_the_details() {
+        rpage.clickOnRegisterButton();
         driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(5));
         rpage.fillDetails(firstName,LastName,add,cityName,
                 stateName,zip,phone,SSN,uName,pass,cPass);
