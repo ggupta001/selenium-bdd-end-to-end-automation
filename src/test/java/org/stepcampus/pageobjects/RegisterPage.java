@@ -68,6 +68,11 @@ public void clickOnSubmit(){
     submit.click();
     }
     public void checkDasboard(){
+        try {
+            Thread.sleep(200);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
         String successMessage = dashboardText.getText();
         Assert.assertTrue(successMessage.contains("Welcome"));
 
