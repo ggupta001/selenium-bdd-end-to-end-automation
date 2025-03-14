@@ -43,23 +43,9 @@ public class WebDriverManagerUtils {
         if (browsername.equalsIgnoreCase("chrome")) {
             // Configuring WebDriverManager for Chrome
             chromedriver.setup();
-
-            // Create a unique temporary directory for user data
-            try {
-                String uniqueDir = "chrome_user_data_" + UUID.randomUUID().toString();
-                Path tempDir = Files.createTempDirectory(uniqueDir);  // Unique directory per session
-
-                // Set ChromeOptions with a unique user-data-dir
-                ChromeOptions options = new ChromeOptions();
-                options.addArguments("user-data-dir=" + tempDir.toString());
-
-                // Initialize ChromeDriver with the options
-                driver = new ChromeDriver(options);
-            } catch (IOException e) {
-                e.printStackTrace();
-                throw new RuntimeException("Failed to create a temporary user data directory for Chrome.");
+                driver = new ChromeDriver();
             }
-        } else if (browsername.equalsIgnoreCase("edge")) {
+         else if (browsername.equalsIgnoreCase("edge")) {
             // Configuring WebDriverManager for Edge
             edgedriver.setup();
             driver = new EdgeDriver();
