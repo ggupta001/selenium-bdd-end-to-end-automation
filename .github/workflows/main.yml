@@ -20,7 +20,7 @@ jobs:
         uses: actions/setup-java@v2
         with:
           java-version: '11'  # Modify this based on your Java version
-          distribution: 'adoptopenjdk'
+          distribution: 'temurin'
 
       - name: Install Maven
         uses: actions/setup-java@v2
