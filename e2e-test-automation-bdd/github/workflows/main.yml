@@ -6,7 +6,7 @@ on:
       feature:
         description: 'Select a feature file to run'
         required: true
-        default: 'feature1'
+        default: 'RegistrationTest'
 
 jobs:
   run-feature:
@@ -19,7 +19,7 @@ jobs:
       - name: Set up JDK
         uses: actions/setup-java@v2
         with:
-          java-version: '11'  # Modify this based on your Java version
+          java-version: '22'  # Modify this based on your Java version
           distribution: 'temurin'
 
       - name: Install Maven
