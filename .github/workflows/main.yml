@@ -21,14 +21,14 @@ jobs:
       - name: Set up JDK (Adoptium Temurin)
         uses: actions/setup-java@v2
         with:
-          java-version: '17'  # Java SE 21 (LTS) or change to '17' for Java SE 17 (LTS)
+          java-version: '21'  # Java SE 21 (LTS) or change to '17' for Java SE 17 (LTS)
           distribution: 'temurin'  # Use Adoptium Temurin for OpenJDK
 
-      # Step 3: Install Maven
+      # Step 3: Install Maven separately (fix for 'maven-version' issue)
       - name: Install Maven
-        uses: actions/setup-java@v2
-        with:
-          maven-version: '3.8.1'  # Specify Maven version (modify if needed)
+        run: |
+          sudo apt update
+          sudo apt install maven  # Install Maven using apt
 
       # Step 4: Install project dependencies using Maven
       - name: Install Dependencies (Maven)
