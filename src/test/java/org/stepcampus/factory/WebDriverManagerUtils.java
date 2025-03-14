@@ -43,7 +43,16 @@ public class WebDriverManagerUtils {
         if (browsername.equalsIgnoreCase("chrome")) {
             // Configuring WebDriverManager for Chrome
             chromedriver.setup();
-                driver = new ChromeDriver();
+
+            // Set Chrome options to avoid user-data-dir conflict
+            ChromeOptions options = new ChromeOptions();
+            String userDataDir = "/tmp/chrome_user_data_" + System.currentTimeMillis();
+            options.addArguments("--user-data-dir=" + userDataDir);
+            options.addArguments("--headless"); // Optional: Run headless in CI/CD
+            options.addArguments("--no-sandbox"); // Optional for certain environments like GitHub Actions
+            options.addArguments("--disable-dev-shm-usage"); // Optional for certain environments like GitHub Actions
+
+            driver = new ChromeDriver(options);
             }
          else if (browsername.equalsIgnoreCase("edge")) {
             // Configuring WebDriverManager for Edge
