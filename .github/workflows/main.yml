@@ -1,9 +1,19 @@
 name: Run Selenium BDD Feature Files
-
 on:
+  workflow_dispatch:
+    inputs:
+      feature:
+        description: 'Select a feature file to run'
+        required: true
+        default: 'RegisterPageTest'  # Default feature to run (can be changed)
+        type: choice  # Dropdown for feature selection
+        options:
+          - RegisterPageTest
+          - LoginPageTest
+          - all  # Option to run all features
   push:
     branches:
-      - master  # Trigger on push to the 'master' branch
+          - master  # Trigger on push to the 'master' branch
 
 jobs:
   run-feature:
