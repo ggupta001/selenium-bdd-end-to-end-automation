@@ -21,7 +21,7 @@ jobs:
     steps:
       # Step 1: Checkout the repository
       - name: Checkout Repository
-        uses: actions/checkout@v3  # Using the latest checkout action
+        uses: actions/checkout@v3  # Latest version of checkout action
 
       # Step 2: Cache Maven dependencies to speed up future builds
       - name: Cache Maven dependencies
@@ -69,4 +69,3 @@ jobs:
             # Run the specific feature file as passed in the input
             mvn test -Dcucumber.options="classpath:features/${{ github.event.inputs.feature }}.feature"
           fi
-
