@@ -1,0 +1,53 @@
+name: Run Selenium BDD Feature Files
+
+on:
+  workflow_dispatch:
+    inputs:
+      feature:
+        description: 'Select a feature file to run'
+        required: true
+        default: 'feature1'  # Default feature to run (can be changed)
+
+jobs:
+  run-feature:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout the repository
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+
+      # Step 2: Verify that pom.xml exists (for debugging)
+      - name: Verify pom.xml location
+        run: |
+          echo "Listing directory contents..."
+          ls -R  # List all directories and files recursively to find pom.xml
+
+      # Step 3: Set up JDK (Java 21 LTS or Java 17 LTS as fallback)
+      - name: Set up JDK (Adoptium Temurin)
+        uses: actions/setup-java@v2
+        with:
+          java-version: '21'  # Java SE 21 (LTS) or change to '17' for Java SE 17 (LTS)
+          distribution: 'temurin'  # Use Adoptium Temurin for OpenJDK
+
+      # Step 4: Install Maven separately (fix for 'maven-version' issue)
+      - name: Install Maven
+        run: |
+          sudo apt update
+          sudo apt install maven  # Install Maven using apt
+
+      # Step 5: Change directory to where pom.xml is located (if needed)
+      # If pom.xml is in a subdirectory like `project-dir/`, uncomment and modify the following:
+      # - name: Change Directory to project folder
+      #   run: cd project-dir  # If your pom.xml is in a subfolder, change the directory.
+
+      # Step 6: Install project dependencies using Maven
+      - name: Install Dependencies (Maven)
+        run: |
+          mvn clean install  # This installs dependencies from your pom.xml
+
+      # Step 7: Run the selected Cucumber Feature file
+      - name: Run Cucumber Feature
+        run: |
+          echo "Running feature file: ${{ github.event.inputs.feature }}"
+          mvn test -Dcucumber.options="--tags @${{ github.event.inputs.feature }}"  # Run the feature file based on the input
