@@ -25,7 +25,7 @@ public class WebDriverManagerUtils {
     private static final WebDriverManager firefoxdriver = WebDriverManager.firefoxdriver();
     private static final WebDriverManager iedriver = WebDriverManager.iedriver();
 
-    String path = System.getProperty("user.dir") + "\\resource\\config.properties";
+    String path = System.getProperty("user.dir") + "//resource//config.properties";
 
     public WebDriverManagerUtils() throws IOException {
         configProperties = new Properties();
