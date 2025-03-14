@@ -14,6 +14,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Properties;
+import java.util.UUID;
 
 /**
  * The type Web driver manager.
@@ -43,17 +44,20 @@ public class WebDriverManagerUtils {
             // Configuring WebDriverManager for Chrome
             chromedriver.setup();
 
-            // Create a temporary directory for a unique user data directory
+            // Create a unique temporary directory for user data
             try {
-                Path tempDir = Files.createTempDirectory("chrome_profile_");
+                String uniqueDir = "chrome_user_data_" + UUID.randomUUID().toString();
+                Path tempDir = Files.createTempDirectory(uniqueDir);  // Unique directory per session
+
+                // Set ChromeOptions with a unique user-data-dir
                 ChromeOptions options = new ChromeOptions();
-                options.addArguments("user-data-dir=" + tempDir.toString());  // Ensure unique user data dir
+                options.addArguments("user-data-dir=" + tempDir.toString());
 
                 // Initialize ChromeDriver with the options
                 driver = new ChromeDriver(options);
             } catch (IOException e) {
                 e.printStackTrace();
-                throw new RuntimeException("Failed to create temporary user data directory for Chrome.");
+                throw new RuntimeException("Failed to create a temporary user data directory for Chrome.");
             }
         } else if (browsername.equalsIgnoreCase("edge")) {
             // Configuring WebDriverManager for Edge
