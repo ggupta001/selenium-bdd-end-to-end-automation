@@ -6,7 +6,7 @@ on:
       feature:
         description: 'Select a feature file to run'
         required: true
-        default: 'RegisterPageTest'  # Default feature file to run
+        default: 'RegisterPageTest'  # Default feature to run (can be changed)
         type: choice  # Dropdown for feature selection
         options:
           - RegisterPageTest
@@ -21,14 +21,14 @@ jobs:
     steps:
       # Step 1: Checkout the repository
       - name: Checkout Repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3  # Using the latest checkout action
 
-      # Step 2: Cache Maven dependencies
+      # Step 2: Cache Maven dependencies to speed up future builds
       - name: Cache Maven dependencies
-        uses: actions/cache@v2
+        uses: actions/cache@v3  # Use the latest version of cache action
         with:
-          path: ~/.m2/repository
-          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          path: ~/.m2/repository  # Cache Maven repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}  # Cache key based on pom.xml hash
           restore-keys: |
             ${{ runner.os }}-maven-
 
@@ -38,20 +38,20 @@ jobs:
           echo "Listing directory contents..."
           ls -R  # List all directories and files recursively to find pom.xml
 
-      # Step 4: Set up JDK (Java 21 LTS or Java 17 LTS as fallback)
+      # Step 4: Set up JDK (Adoptium Temurin)
       - name: Set up JDK (Adoptium Temurin)
         uses: actions/setup-java@v2
         with:
           java-version: '21'  # Java SE 21 (LTS) or change to '17' for Java SE 17 (LTS)
           distribution: 'temurin'  # Use Adoptium Temurin for OpenJDK
 
-      # Step 5: Install Maven separately (fix for 'maven-version' issue)
+      # Step 5: Install Maven using apt
       - name: Install Maven
         run: |
           sudo apt update
           sudo apt install maven  # Install Maven using apt
 
-      # Step 6: Install project dependencies using Maven
+      # Step 6: Install project dependencies using Maven (if not already cached)
       - name: Install Dependencies (Maven)
         run: |
           mvn clean install  # This installs dependencies from your pom.xml
@@ -70,4 +70,3 @@ jobs:
             mvn test -Dcucumber.options="classpath:features/${{ github.event.inputs.feature }}.feature"
           fi
 
-      # Step 8: Save Maven dependencies cache (optional, GitHub handles this automatically)
