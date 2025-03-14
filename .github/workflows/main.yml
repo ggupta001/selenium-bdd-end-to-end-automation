@@ -15,6 +15,9 @@ on:
     branches:
       - master  # Trigger on push to the 'master' branch
 
+permissions:
+  contents: read  # Limit access to read-only for the repository (adjust as necessary)
+
 jobs:
   run-feature:
     runs-on: ubuntu-latest
@@ -56,11 +59,16 @@ jobs:
         run: |
           mvn clean install  # This installs dependencies from your pom.xml
 
-      # Step 6: Debug environment variables to verify if secrets are set correctly
-      - name: Debug Environment Variables
+      # Step 6: Ensure secrets are set correctly without printing them to logs
+      - name: Verify secrets are set (without exposing them)
         run: |
-          echo "USER_NAME is: $USER_NAME"
-          echo "USER_PASSWORD is: $USER_PASSWORD"
+          echo "Verifying secrets are available without revealing sensitive data"
+          if [ -z "$USER_NAME" ]; then
+            echo "USER_NAME is not set"
+          fi
+          if [ -z "$USER_PASSWORD" ]; then
+            echo "USER_PASSWORD is not set"
+          fi
 
       # Step 7: Run the selected Cucumber Feature file or all feature files
       - name: Run Cucumber Feature
