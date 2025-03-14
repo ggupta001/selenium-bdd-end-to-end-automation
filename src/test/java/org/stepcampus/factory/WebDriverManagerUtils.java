@@ -5,10 +5,13 @@ import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.edge.EdgeDriver;
 import org.openqa.selenium.firefox.FirefoxDriver;
 import org.openqa.selenium.ie.InternetExplorerDriver;
+import org.openqa.selenium.chrome.ChromeOptions;
 import io.github.bonigarcia.wdm.WebDriverManager; // Add this import
 
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Properties;
 
@@ -39,7 +42,19 @@ public class WebDriverManagerUtils {
         if (browsername.equalsIgnoreCase("chrome")) {
             // Configuring WebDriverManager for Chrome
             chromedriver.setup();
-            driver = new ChromeDriver();
+
+            // Create a temporary directory for a unique user data directory
+            try {
+                Path tempDir = Files.createTempDirectory("chrome_profile_");
+                ChromeOptions options = new ChromeOptions();
+                options.addArguments("user-data-dir=" + tempDir.toString());  // Ensure unique user data dir
+
+                // Initialize ChromeDriver with the options
+                driver = new ChromeDriver(options);
+            } catch (IOException e) {
+                e.printStackTrace();
+                throw new RuntimeException("Failed to create temporary user data directory for Chrome.");
+            }
         } else if (browsername.equalsIgnoreCase("edge")) {
             // Configuring WebDriverManager for Edge
             edgedriver.setup();
