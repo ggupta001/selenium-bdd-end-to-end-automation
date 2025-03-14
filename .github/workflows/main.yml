@@ -25,7 +25,7 @@ jobs:
     env:
       USER_NAME: ${{ secrets.USER_NAME }}  # Use GitHub Secrets for sensitive information
       USER_PASSWORD: ${{ secrets.USER_PASSWORD }}  # Use GitHub Secrets for sensitive information
-      API_KEY: ${{ secrets.MY_API_KEY }}  # Example of another secret
+
 
     steps:
       # Step 1: Checkout the repository
