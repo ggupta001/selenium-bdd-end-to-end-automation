@@ -6,32 +6,37 @@ on:
       feature:
         description: 'Select a feature file to run'
         required: true
-        default: 'RegistrationTest'
+        default: 'feature1'  # Default feature to run (can be changed)
 
 jobs:
   run-feature:
     runs-on: ubuntu-latest
 
     steps:
+      # Step 1: Checkout the repository
       - name: Checkout Repository
         uses: actions/checkout@v2
 
-      - name: Set up JDK
+      # Step 2: Set up JDK (Java 21 LTS or Java 17 LTS as fallback)
+      - name: Set up JDK (Adoptium Temurin)
         uses: actions/setup-java@v2
         with:
-          java-version: '21'  # Modify this based on your Java version
-          distribution: 'temurin'
+          java-version: '19'  # Java SE 21 (LTS) or change to '17' for Java SE 17 (LTS)
+          distribution: 'temurin'  # Use Adoptium Temurin for OpenJDK
 
+      # Step 3: Install Maven
       - name: Install Maven
         uses: actions/setup-java@v2
         with:
-          maven-version: '3.8.1'  # Specify your desired Maven version
+          maven-version: '3.8.1'  # Specify Maven version (modify if needed)
 
+      # Step 4: Install project dependencies using Maven
       - name: Install Dependencies (Maven)
         run: |
-          mvn clean install  # Install dependencies defined in pom.xml
+          mvn clean install  # This installs dependencies from your pom.xml
 
+      # Step 5: Run the selected Cucumber Feature file
       - name: Run Cucumber Feature
         run: |
           echo "Running feature file: ${{ github.event.inputs.feature }}"
-          mvn test -Dcucumber.options="--tags @${{ github.event.inputs.feature }}"
+          mvn test -Dcucumber.options="--tags @${{ github.event.inputs.feature }}"  # Run the feature file based on the input
