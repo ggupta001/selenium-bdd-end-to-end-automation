@@ -57,12 +57,11 @@ jobs:
         run: |
           mvn clean install  # This installs dependencies from your pom.xml
 
-      # Step 6: Securely use credentials from GitHub Secrets
-      - name: Use secrets (e.g., API key, DB password)
+      # Step 6: Debug environment variables to verify if secrets are set correctly
+      - name: Debug Environment Variables
         run: |
-          echo "Using secure credentials from GitHub Secrets..."
-          echo "API Key: ${{ secrets.MY_API_KEY }}"  # Access your secret by referencing the secret name
-          echo "DB Password: ${{ secrets.DB_PASSWORD }}"
+          echo "USER_NAME is: ${{ secrets.USER_NAME }}"
+          echo "USER_PASSWORD is: ${{ secrets.USER_PASSWORD }}"
 
       # Step 7: Run the selected Cucumber Feature file or all feature files
       - name: Run Cucumber Feature
@@ -71,9 +70,7 @@ jobs:
           
           # Check if the input is 'all' or a specific feature file
           if [ "${{ github.event.inputs.feature }}" == "all" ]; then
-            # Run all feature files in the features directory
             mvn test -Dcucumber.options="classpath:features"
           else
-            # Run the specific feature file as passed in the input
             mvn test -Dcucumber.options="classpath:features/${{ github.event.inputs.feature }}.feature"
           fi
