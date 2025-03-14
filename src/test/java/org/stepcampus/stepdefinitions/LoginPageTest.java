@@ -19,8 +19,6 @@ public class LoginPageTest extends WebDriverManagerUtils {
     }
     @When("user enter username and password")
     public void user_enter_username_and_password() {
-       // String uname=configProperties.getProperty("uName");
-       // String password=configProperties.getProperty("login-password");
         final String userName="MY_API_KEY";
         final String password="DB_PASSWORD";
          loginpg.enterUserName(System.getenv(userName));
