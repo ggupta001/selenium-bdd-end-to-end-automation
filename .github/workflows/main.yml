@@ -1,20 +1,6 @@
 name: Run Selenium BDD Feature Files
 
 on:
-  workflow_dispatch:
-    inputs:
-      feature:
-        description: 'Select a feature file to run'
-        required: true
-        default: 'RegisterPageTest'  # Default feature to run (can be changed)
-        type: choice  # Dropdown for feature selection
-        options:
-          - RegisterPageTest
-          - LoginPageTest
-          - AnotherFeatureTest
-          - all  # Option to run all features
-
-  # Automatically run the feature files when code is pushed to 'master' branch
   push:
     branches:
       - master  # Trigger on push to the 'master' branch
@@ -37,29 +23,30 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-maven-
 
-      # Step 3: Verify that pom.xml exists (for debugging)
-      - name: Verify pom.xml location
-        run: |
-          echo "Listing directory contents..."
-          ls -R  # List all directories and files recursively to find pom.xml
-
-      # Step 4: Set up JDK (Adoptium Temurin)
+      # Step 3: Set up JDK (Adoptium Temurin)
       - name: Set up JDK (Adoptium Temurin)
         uses: actions/setup-java@v2
         with:
           java-version: '21'  # Java SE 21 (LTS) or change to '17' for Java SE 17 (LTS)
           distribution: 'temurin'  # Use Adoptium Temurin for OpenJDK
 
-      # Step 5: Install Maven using apt
+      # Step 4: Install Maven using apt
       - name: Install Maven
         run: |
           sudo apt update
           sudo apt install maven  # Install Maven using apt
 
-      # Step 6: Install project dependencies using Maven (if not already cached)
+      # Step 5: Install project dependencies using Maven (if not already cached)
       - name: Install Dependencies (Maven)
         run: |
           mvn clean install  # This installs dependencies from your pom.xml
+
+      # Step 6: Securely use credentials from GitHub Secrets
+      - name: Use secrets (e.g., API key, DB password)
+        run: |
+          echo "Using secure credentials from GitHub Secrets..."
+          echo "API Key: ${{ secrets.MY_API_KEY }}"  # Access your secret by referencing the secret name
+          echo "DB Password: ${{ secrets.DB_PASSWORD }}"
 
       # Step 7: Run the selected Cucumber Feature file or all feature files
       - name: Run Cucumber Feature

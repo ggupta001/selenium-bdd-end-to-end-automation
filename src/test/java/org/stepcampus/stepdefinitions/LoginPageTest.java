@@ -19,10 +19,12 @@ public class LoginPageTest extends WebDriverManagerUtils {
     }
     @When("user enter username and password")
     public void user_enter_username_and_password() {
-        String uname=configProperties.getProperty("uName");
-        String password=configProperties.getProperty("login-password");
-         loginpg.enterUserName(uname);
-         loginpg.enterPassword(password);
+       // String uname=configProperties.getProperty("uName");
+       // String password=configProperties.getProperty("login-password");
+        final String userName="USERNAME";
+        final String password="PASSWORD";
+         loginpg.enterUserName(System.getenv(userName));
+         loginpg.enterPassword(System.getenv(password));
     }
     @Then("user can able to logged in")
     public void user_can_able_to_logged_in() {
