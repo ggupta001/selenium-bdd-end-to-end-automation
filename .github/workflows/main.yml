@@ -6,7 +6,13 @@ on:
       feature:
         description: 'Select a feature file to run'
         required: true
-        default: 'all'  # Default feature to run (can be changed)
+        default: 'RegisterPageTest'  # Default feature file to run
+        type: choice  # This creates a dropdown for the user
+        options:
+          - RegisterPageTest
+          - LoginPageTest
+          - AnotherFeatureTest
+          - all  # Option to run all features
 
 jobs:
   run-feature:
@@ -36,18 +42,21 @@ jobs:
           sudo apt update
           sudo apt install maven  # Install Maven using apt
 
-      # Step 5: Change directory to where pom.xml is located (if needed)
-      # If pom.xml is in a subdirectory like `project-dir/`, uncomment and modify the following:
-      # - name: Change Directory to project folder
-      #   run: cd project-dir  # If your pom.xml is in a subfolder, change the directory.
-
-      # Step 6: Install project dependencies using Maven
+      # Step 5: Install project dependencies using Maven
       - name: Install Dependencies (Maven)
         run: |
           mvn clean install  # This installs dependencies from your pom.xml
 
-      # Step 7: Run the selected Cucumber Feature file
+      # Step 6: Run the selected Cucumber Feature file or all feature files
       - name: Run Cucumber Feature
         run: |
-          echo "Running feature file: ${{ github.event.inputs.feature }}"
-          mvn test -Dcucumber.options="--tags @${{ github.event.inputs.feature }}"  # Run the feature file based on the input
+          echo "Running feature files based on input: ${{ github.event.inputs.feature }}"
+          
+          # Check if the input is 'all' or a specific feature file
+          if [ "${{ github.event.inputs.feature }}" == "all" ]; then
+            # Run all feature files in the features directory
+            mvn test -Dcucumber.options="classpath:features"
+          else
+            # Run the specific feature file as passed in the input
+            mvn test -Dcucumber.options="classpath:features/${{ github.event.inputs.feature }}.feature"
+          fi
