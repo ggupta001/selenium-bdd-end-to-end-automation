@@ -48,7 +48,7 @@ public class WebDriverManagerUtils {
             ChromeOptions options = new ChromeOptions();
             String userDataDir = "/tmp/chrome_user_data_" + System.currentTimeMillis();
             options.addArguments("--user-data-dir=" + userDataDir);
-            options.addArguments("--headless"); // Optional: Run headless in CI/CD
+            //options.addArguments("--headless"); // Optional: Run headless in CI/CD
             options.addArguments("--no-sandbox"); // Optional for certain environments like GitHub Actions
             options.addArguments("--disable-dev-shm-usage"); // Optional for certain environments like GitHub Actions
 
