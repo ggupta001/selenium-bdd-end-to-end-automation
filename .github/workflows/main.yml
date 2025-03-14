@@ -20,7 +20,6 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      # Set environment variables that can be accessed by any step in the job
       USER_NAME: ${{ secrets.USER_NAME }}  # Use GitHub Secrets for sensitive information
       USER_PASSWORD: ${{ secrets.USER_PASSWORD }}  # Use GitHub Secrets for sensitive information
       API_KEY: ${{ secrets.MY_API_KEY }}  # Example of another secret
@@ -60,8 +59,8 @@ jobs:
       # Step 6: Debug environment variables to verify if secrets are set correctly
       - name: Debug Environment Variables
         run: |
-          echo "USER_NAME is: ${{ secrets.USER_NAME }}"
-          echo "USER_PASSWORD is: ${{ secrets.USER_PASSWORD }}"
+          echo "USER_NAME is: $USER_NAME"
+          echo "USER_PASSWORD is: $USER_PASSWORD"
 
       # Step 7: Run the selected Cucumber Feature file or all feature files
       - name: Run Cucumber Feature
