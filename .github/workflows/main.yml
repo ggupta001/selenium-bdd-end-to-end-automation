@@ -6,7 +6,7 @@ on:
       feature:
         description: 'Select a feature file to run'
         required: true
-        default: 'RegisterPageTest'  # Default feature to run (can be changed)
+        default: 'all'  # Default feature to run (can be changed)
 
 jobs:
   run-feature:
