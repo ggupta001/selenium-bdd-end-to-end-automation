@@ -99,6 +99,7 @@ jobs:
 
           echo "Feature Results: $FEATURE_RESULTS"
 
+          # Properly format FEATURE_RESULTS for use in GitHub Actions output
           echo "::set-output name=feature_results::$(echo $FEATURE_RESULTS)"
 
       - name: Send Test Result Email
