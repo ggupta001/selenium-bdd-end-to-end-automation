@@ -11,7 +11,7 @@ import org.junit.runner.RunWith;
         glue = "org.stepcampus.stepdefinitions",  // Correct path to your step definitions package
         dryRun = false,
         monochrome = true,
-        plugin = {"pretty"}
+        plugin = {"json:target/cucumber.json"}
 )
 public class TestRunner {
 }
