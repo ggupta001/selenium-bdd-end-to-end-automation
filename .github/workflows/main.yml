@@ -85,7 +85,16 @@ jobs:
           fi
           echo "Test execution completed"
 
-      # Step 8: Parse the cucumber.json file to extract scenario counts
+      # Step 8: Debug - Check cucumber.json content to verify it's generated
+      - name: Debug - Check cucumber.json
+        run: |
+          if [ -f target/cucumber.json ]; then
+            cat target/cucumber.json
+          else
+            echo "cucumber.json not found!"
+          fi
+
+      # Step 9: Parse Cucumber Test Results and count passed/failed scenarios
       - name: Parse Cucumber Test Results
         id: parse_results
         run: |
@@ -98,12 +107,17 @@ jobs:
           TOTAL_FAILED=0
 
           # Loop through each feature file and count the passed/failed scenarios
-          FEATURE_FILES=$(jq '.elements[].name' target/cucumber.json | sort | uniq)
+          FEATURE_FILES=$(jq -r '.elements[].name' target/cucumber.json | sort | uniq)
 
           for FEATURE in $FEATURE_FILES; do
-            FEATURE_NAME=$(echo $FEATURE | sed 's/"//g')
-            PASSED=$(jq --arg FEATURE_NAME "$FEATURE_NAME" '.elements[] | select(.name == $FEATURE_NAME) | select(.status == "passed")' target/cucumber.json | wc -l)
-            FAILED=$(jq --arg FEATURE_NAME "$FEATURE_NAME" '.elements[] | select(.name == $FEATURE_NAME) | select(.status == "failed")' target/cucumber.json | wc -l)
+            FEATURE_NAME=$FEATURE
+
+            # Count passed and failed steps for each feature file
+            PASSED=$(jq --arg FEATURE_NAME "$FEATURE_NAME" \
+              '[.elements[] | select(.name == $FEATURE_NAME) | .steps[] | select(.result == "passed")]' target/cucumber.json | wc -l)
+
+            FAILED=$(jq --arg FEATURE_NAME "$FEATURE_NAME" \
+              '[.elements[] | select(.name == $FEATURE_NAME) | .steps[] | select(.result == "failed")]' target/cucumber.json | wc -l)
 
             # Append the feature file result to the email body
             EMAIL_BODY="$EMAIL_BODY$FEATURE_NAME\nScenarios Passed: $PASSED\nScenarios Failed: $FAILED\n\n"
@@ -119,7 +133,7 @@ jobs:
           # Capture the email body as an environment variable for later use
           echo "EMAIL_BODY=$EMAIL_BODY" >> $GITHUB_ENV
 
-      # Step 9: Send the test result email using SendGrid API
+      # Step 10: Send Test Result Email using SendGrid API
       - name: Send Test Result Email
         if: ${{ always() }}  # Ensure it runs even if tests fail
         run: |
