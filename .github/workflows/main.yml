@@ -26,8 +26,8 @@ jobs:
     env:
       USER_NAME: ${{ secrets.USER_NAME }}
       USER_PASSWORD: ${{ secrets.USER_PASSWORD }}
-      GMAIL_USERNAME: ${{ secrets.GMAIL_USERNAME }}
-      GMAIL_PASSWORD: ${{ secrets.GMAIL_PASSWORD }}
+      SENDGRID_API_KEY: ${{ secrets.SENDGRID_API_KEY }}
+      SENDGRID_SENDER_EMAIL: ${{ secrets.SENDGRID_SENDER_EMAIL }}
       RECIPIENT_EMAIL: ${{ secrets.RECIPIENT_EMAIL }}
 
     steps:
@@ -119,13 +119,22 @@ jobs:
           # Capture the email body as an environment variable for later use
           echo "EMAIL_BODY=$EMAIL_BODY" >> $GITHUB_ENV
 
-      # Step 9: Send the test result email using Gmail SMTP
+      # Step 9: Send the test result email using SendGrid API
       - name: Send Test Result Email
         if: ${{ always() }}  # Ensure it runs even if tests fail
         run: |
-          # Send email using Gmail SMTP
-          curl --url 'smtp://smtp.gmail.com:587' --ssl-reqd \
-            --mail-from "${{ secrets.GMAIL_USERNAME }}" \
-            --mail-rcpt "${{ secrets.RECIPIENT_EMAIL }}" \
-            --user "${{ secrets.GMAIL_USERNAME }}:${{ secrets.GMAIL_PASSWORD }}" \
-            --data-binary "Subject: Test Execution Summary\n\n${{ env.EMAIL_BODY }}"
+          # Send email using SendGrid API
+          curl -X POST "https://api.sendgrid.com/v3/mail/send" \
+            -H "Authorization: Bearer $SENDGRID_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "personalizations": [{
+                "to": [{"email": "'"${{ secrets.RECIPIENT_EMAIL }}"'"}],
+                "subject": "Test Execution Summary"
+              }],
+              "from": {"email": "'"${{ secrets.SENDGRID_SENDER_EMAIL }}"'"},
+              "content": [{
+                "type": "text/plain",
+                "value": "'"${{ env.EMAIL_BODY }}"'"
+              }]
+            }'
