@@ -26,17 +26,17 @@ jobs:
     env:
       USER_NAME: ${{ secrets.USER_NAME }}
       USER_PASSWORD: ${{ secrets.USER_PASSWORD }}
-      SENDGRID_API_KEY: ${{ secrets.SENDGRID_API_KEY }}
-      SENDGRID_SENDER_EMAIL: ${{ secrets.SENDGRID_SENDER_EMAIL }}
+      GMAIL_USERNAME: ${{ secrets.GMAIL_USERNAME }}
+      GMAIL_PASSWORD: ${{ secrets.GMAIL_PASSWORD }}
       RECIPIENT_EMAIL: ${{ secrets.RECIPIENT_EMAIL }}
 
     steps:
-      # Step 1: Checkout Repository
+      # Step 1: Checkout the repository
       - name: Checkout Repository
         uses: actions/checkout@v3
-
-      # Step 2: Cache Maven dependencies
-      - name: Cache Maven dependencies
+          
+          # Step 2: Cache Maven dependencies
+          - name: Cache Maven dependencies
         uses: actions/cache@v3
         with:
           path: ~/.m2/repository
@@ -57,7 +57,7 @@ jobs:
           sudo apt update
           sudo apt install maven
 
-      # Step 5: Install Dependencies (Maven)
+      # Step 5: Install project dependencies
       - name: Install Dependencies (Maven)
         run: |
           mvn clean install
@@ -79,7 +79,7 @@ jobs:
         run: |
           echo "Running feature files based on input: ${{ github.event.inputs.feature }}"
           if [ "${{ github.event.inputs.feature }}" == "all" ]; then
-            mvn test -Dcucumber.options="classpath:features"  # Cucumber will generate a JSON report
+            mvn test -Dcucumber.options="classpath:features" # Generates a cucumber.json report
           else
             mvn test -Dcucumber.options="classpath:features/${{ github.event.inputs.feature }}.feature"
           fi
@@ -89,48 +89,44 @@ jobs:
       - name: Parse Cucumber Test Results
         id: parse_results
         run: |
-          # Install jq to parse the JSON report
+          # Install jq to parse JSON
           sudo apt-get install jq
 
-          # Parse the cucumber JSON report for passed and failed scenarios
-          PASSED=$(jq '.elements[] | select(.status == "passed")' target/cucumber.json | wc -l)
-          FAILED=$(jq '.elements[] | select(.status == "failed")' target/cucumber.json | wc -l)
-          
-          # Capture the results as environment variables
-          echo "PASSED=$PASSED" >> $GITHUB_ENV
-          echo "FAILED=$FAILED" >> $GITHUB_ENV
+          # Initialize variables for the email body
+          EMAIL_BODY="Feature Files Executed:\n\n"
+          TOTAL_PASSED=0
+          TOTAL_FAILED=0
 
-          # Capture the names of the executed feature files
-          FEATURE_FILES=$(jq '.elements[] | .name' target/cucumber.json | sort | uniq)
-          echo "FEATURE_FILES=$FEATURE_FILES" >> $GITHUB_ENV
+          # Loop through each feature file and count the passed/failed scenarios
+          FEATURE_FILES=$(jq '.elements[].name' target/cucumber.json | sort | uniq)
 
-      # Step 9: Send the test result email using SendGrid API
+          for FEATURE in $FEATURE_FILES; do
+            FEATURE_NAME=$(echo $FEATURE | sed 's/"//g')
+            PASSED=$(jq --arg FEATURE_NAME "$FEATURE_NAME" '.elements[] | select(.name == $FEATURE_NAME) | select(.status == "passed")' target/cucumber.json | wc -l)
+            FAILED=$(jq --arg FEATURE_NAME "$FEATURE_NAME" '.elements[] | select(.name == $FEATURE_NAME) | select(.status == "failed")' target/cucumber.json | wc -l)
+
+            # Append the feature file result to the email body
+            EMAIL_BODY="$EMAIL_BODY$FEATURE_NAME\nScenarios Passed: $PASSED\nScenarios Failed: $FAILED\n\n"
+
+            # Update total passed and failed counters
+            TOTAL_PASSED=$((TOTAL_PASSED + PASSED))
+            TOTAL_FAILED=$((TOTAL_FAILED + FAILED))
+          done
+
+          # Append the total passed/failed scenarios to the email body
+          EMAIL_BODY="$EMAIL_BODY\nTotal Scenarios Passed: $TOTAL_PASSED\nTotal Scenarios Failed: $TOTAL_FAILED"
+
+          # Capture the email body as an environment variable for later use
+          echo "EMAIL_BODY=$EMAIL_BODY" >> $GITHUB_ENV
+
+      # Step 9: Send the test result email using Gmail SMTP
       - name: Send Test Result Email
         if: ${{ always() }}  # Ensure it runs even if tests fail
         run: |
-          # Construct the email body
-          if [ "$PASSED" -gt 0 ]; then
-            STATUS="PASS"
-            SUBJECT="Tests Passed"
-            BODY="Feature Files Executed: $FEATURE_FILES\n\nScenarios Passed: $PASSED\nScenarios Failed: $FAILED"
-          else
-            STATUS="FAIL"
-            SUBJECT="Tests Failed"
-            BODY="Feature Files Executed: $FEATURE_FILES\n\nScenarios Passed: $PASSED\nScenarios Failed: $FAILED"
-          fi
-          
-          # Send email using SendGrid API
-          curl -X POST "https://api.sendgrid.com/v3/mail/send" \
-            -H "Authorization: Bearer $SENDGRID_API_KEY" \
-            -H "Content-Type: application/json" \
-            -d '{
-              "personalizations": [{
-                "to": [{"email": "'"${{ secrets.RECIPIENT_EMAIL }}"'"}],
-                "subject": "'"$SUBJECT"'"
-              }],
-              "from": {"email": "'"${{ secrets.SENDGRID_SENDER_EMAIL }}"'"},
-              "content": [{
-                "type": "text/plain",
-                "value": "'"$BODY"'"
-              }]
-            }'
+          # Send email using Gmail SMTP
+          curl --url 'smtp://smtp.gmail.com:587' --ssl-reqd \
+            --mail-from "${{ secrets.GMAIL_USERNAME }}" \
+            --mail-rcpt "${{ secrets.RECIPIENT_EMAIL }}" \
+            --upload-file - \
+            --user "${{ secrets.GMAIL_USERNAME }}:${{ secrets.GMAIL_PASSWORD }}" \
+            --data-binary "Subject: Test Execution Summary\n\n${{ env.EMAIL_BODY }}"
