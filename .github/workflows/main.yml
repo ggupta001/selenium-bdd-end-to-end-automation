@@ -85,6 +85,11 @@ jobs:
             exit 1
           fi
 
+      - name: Output cucumber.json contents for verification
+        run: |
+          echo "Contents of cucumber.json:"
+          cat target/cucumber.json
+
       - name: Install jq to parse JSON
         run: |
           sudo apt-get install jq
@@ -94,6 +99,12 @@ jobs:
         run: |
           echo "Parsing cucumber.json"
           
+          # Verify if the file is empty or not
+          if [ ! -s target/cucumber.json ]; then
+            echo "Error: cucumber.json is empty"
+            exit 1
+          fi
+
           # Parse cucumber.json and extract feature, passed and failed steps count.
           FEATURE_RESULTS=$(cat target/cucumber.json | jq '[.[] | {name: .name, passed: (.elements | map(select(.steps[].result.status == "passed")) | length), failed: (.elements | map(select(.steps[].result.status == "failed")) | length)}]')
 
