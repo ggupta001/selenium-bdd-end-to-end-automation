@@ -94,32 +94,26 @@ jobs:
         run: |
           # Parse cucumber.json and extract feature name, pass and fail counts
           FEATURE_RESULTS=$(cat target/cucumber.json | jq -r '.[] | {name: .name, passed: (.elements | map(select(.steps[].result.status == "passed")) | length), failed: (.elements | map(select(.steps[].result.status == "failed")) | length)}')
+          
+          # Output the feature results to debug and verify
+          echo "$FEATURE_RESULTS"
 
-          # Save parsed results as environment variable
-          echo "FEATURE_RESULTS=$FEATURE_RESULTS" >> $GITHUB_ENV
-
-      - name: Build email body
-        id: build_email_body
-        run: |
-          # Construct the email body with feature names and pass/fail counts
+          # Prepare the email body with feature names and pass/fail counts
           BODY="Test Results Summary:\n\n"
-
-          # Iterate over the parsed results and build the content for each feature
+          
+          # Loop through the parsed feature results and append details to BODY
           for feature in $(echo "$FEATURE_RESULTS" | jq -r '. | @base64'); do
             _jq() {
               echo ${feature} | base64 --decode | jq -r ${1}
             }
-
-            # Extract values for the email body
             FEATURE_NAME=$(_jq '.name')
             PASSED=$(_jq '.passed')
             FAILED=$(_jq '.failed')
 
-            # Append feature result to the email body
             BODY="$BODY\nFeature: $FEATURE_NAME\nPassed: $PASSED\nFailed: $FAILED\n"
           done
 
-          # Save the constructed body into environment variable
+          # Save the final BODY to the environment
           echo "BODY=$BODY" >> $GITHUB_ENV
 
       - name: Send Test Result Email
