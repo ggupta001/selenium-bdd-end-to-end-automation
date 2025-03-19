@@ -94,27 +94,31 @@ jobs:
         run: |
           echo "Parsing cucumber.json"
           
-          # Extract feature names, passed and failed counts per feature
-          FEATURE_RESULTS=$(cat target/cucumber.json | jq -r '.[] | {name: .name, passed: ([.elements[].steps[] | select(.result.status == "passed")] | length), failed: ([.elements[].steps[] | select(.result.status == "failed")] | length)}')
+          # Parse cucumber.json and store the result into FEATURE_RESULTS
+          FEATURE_RESULTS=$(cat target/cucumber.json | jq '[.[] | {name: .name, passed: (.elements[].steps[] | select(.result.status == "passed") | length), failed: (.elements[].steps[] | select(.result.status == "failed") | length)}]')
 
-          echo "Feature Results: $FEATURE_RESULTS"
+          echo "Parsed Feature Results: $FEATURE_RESULTS"
 
-          # Properly format FEATURE_RESULTS for use in GitHub Actions output
-          echo "::set-output name=feature_results::$(echo $FEATURE_RESULTS)"
+          # Set parsed output as an action output for later use
+          echo "::set-output name=feature_results::$FEATURE_RESULTS"
 
       - name: Send Test Result Email
         if: ${{ always() }}  # Ensure it runs even if tests fail
         run: |
           FEATURE_RESULTS="${{ steps.parse_results.outputs.feature_results }}"
           
-          # Build the email body based on the parsed results
+          # Initialize the email body
           BODY="Test Results Summary:\n\n"
           
           # Loop through the feature results and build the email content
-          for feature in $(echo "$FEATURE_RESULTS" | jq -r 'keys[]'); do
-            FEATURE_NAME=$(echo "$FEATURE_RESULTS" | jq -r ".[$feature].name")
-            PASSED=$(echo "$FEATURE_RESULTS" | jq -r ".[$feature].passed")
-            FAILED=$(echo "$FEATURE_RESULTS" | jq -r ".[$feature].failed")
+          for feature in $(echo "$FEATURE_RESULTS" | jq -r '.[] | @base64'); do
+            _jq() {
+              echo "$feature" | base64 --decode | jq -r ${1}
+            }
+
+            FEATURE_NAME=$(_jq '.name')
+            PASSED=$(_jq '.passed')
+            FAILED=$(_jq '.failed')
           
             BODY="$BODY\nFeature: $FEATURE_NAME\nPassed: $PASSED\nFailed: $FAILED\n"
           done
