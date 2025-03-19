@@ -111,6 +111,7 @@ jobs:
           BODY="Test Results Summary:\n\n"
 
           # Loop through the feature results and build the email content
+          # Use jq to iterate over the parsed results
           for feature in $(echo "$FEATURE_RESULTS" | jq -r '.[] | @base64'); do
             _jq() {
               echo "$feature" | base64 --decode | jq -r ${1}
@@ -120,10 +121,11 @@ jobs:
             FEATURE_NAME=$(_jq '.name')
             PASSED=$(_jq '.passed')
             FAILED=$(_jq '.failed')
-          
+
+            # Append to the email body
             BODY="$BODY\nFeature: $FEATURE_NAME\nPassed: $PASSED\nFailed: $FAILED\n"
           done
-          
+
           # Send email using SendGrid API
           curl -X POST "https://api.sendgrid.com/v3/mail/send" \
             -H "Authorization: Bearer $SENDGRID_API_KEY" \
