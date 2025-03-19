@@ -33,6 +33,10 @@ jobs:
     steps:
       # Step 1: Checkout the repository
       - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      # Step 2: Cache Maven dependencies
+      - name: Cache Maven dependencies
         uses: actions/cache@v3
         with:
           path: ~/.m2/repository
@@ -123,6 +127,5 @@ jobs:
           curl --url 'smtp://smtp.gmail.com:587' --ssl-reqd \
             --mail-from "${{ secrets.GMAIL_USERNAME }}" \
             --mail-rcpt "${{ secrets.RECIPIENT_EMAIL }}" \
-            --upload-file - \
             --user "${{ secrets.GMAIL_USERNAME }}:${{ secrets.GMAIL_PASSWORD }}" \
             --data-binary "Subject: Test Execution Summary\n\n${{ env.EMAIL_BODY }}"
