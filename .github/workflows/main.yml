@@ -93,11 +93,12 @@ jobs:
         id: parse_results
         run: |
           echo "Parsing cucumber.json"
+          
+          # Parse cucumber.json and extract feature, passed and failed steps count.
+          FEATURE_RESULTS=$(cat target/cucumber.json | jq '[.[] | {name: .name, passed: (.elements | map(select(.steps[].result.status == "passed")) | length), failed: (.elements | map(select(.steps[].result.status == "failed")) | length)}]')
 
-          # Parse cucumber.json and store the result into FEATURE_RESULTS
-          FEATURE_RESULTS=$(cat target/cucumber.json | jq '[.[] | {name: .name, passed: (.elements[].steps[] | select(.result.status == "passed") | length), failed: (.elements[].steps[] | select(.result.status == "failed") | length)}]')
-
-          echo "Parsed Feature Results: $FEATURE_RESULTS"
+          # Output the parsed results
+          echo "Parsed Results: $FEATURE_RESULTS"
 
           # Set parsed output as an action output for later use
           echo "::set-output name=feature_results::$FEATURE_RESULTS"
@@ -111,19 +112,9 @@ jobs:
           BODY="Test Results Summary:\n\n"
 
           # Loop through the feature results and build the email content
-          # Use jq to iterate over the parsed results
-          for feature in $(echo "$FEATURE_RESULTS" | jq -r '.[] | @base64'); do
-            _jq() {
-              echo "$feature" | base64 --decode | jq -r ${1}
-            }
-
-            # Extract feature name, passed, and failed steps
-            FEATURE_NAME=$(_jq '.name')
-            PASSED=$(_jq '.passed')
-            FAILED=$(_jq '.failed')
-
-            # Append to the email body
-            BODY="$BODY\nFeature: $FEATURE_NAME\nPassed: $PASSED\nFailed: $FAILED\n"
+          # Using jq to iterate over the features and extract name, passed and failed count
+          echo "$FEATURE_RESULTS" | jq -r '.[] | "Feature: \(.name)\nPassed: \(.passed)\nFailed: \(.failed)\n" ' | while read -r line; do
+            BODY="${BODY}\n$line"
           done
 
           # Send email using SendGrid API
