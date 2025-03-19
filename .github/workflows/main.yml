@@ -93,7 +93,7 @@ jobs:
         id: parse_results
         run: |
           echo "Parsing cucumber.json"
-          
+
           # Parse cucumber.json and store the result into FEATURE_RESULTS
           FEATURE_RESULTS=$(cat target/cucumber.json | jq '[.[] | {name: .name, passed: (.elements[].steps[] | select(.result.status == "passed") | length), failed: (.elements[].steps[] | select(.result.status == "failed") | length)}]')
 
@@ -106,16 +106,17 @@ jobs:
         if: ${{ always() }}  # Ensure it runs even if tests fail
         run: |
           FEATURE_RESULTS="${{ steps.parse_results.outputs.feature_results }}"
-          
+
           # Initialize the email body
           BODY="Test Results Summary:\n\n"
-          
+
           # Loop through the feature results and build the email content
           for feature in $(echo "$FEATURE_RESULTS" | jq -r '.[] | @base64'); do
             _jq() {
               echo "$feature" | base64 --decode | jq -r ${1}
             }
 
+            # Extract feature name, passed, and failed steps
             FEATURE_NAME=$(_jq '.name')
             PASSED=$(_jq '.passed')
             FAILED=$(_jq '.failed')
