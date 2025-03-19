@@ -31,11 +31,9 @@ jobs:
       RECIPIENT_EMAIL: ${{ secrets.RECIPIENT_EMAIL }}
 
     steps:
-      # Step 1: Checkout the repository
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      # Step 2: Cache Maven dependencies
       - name: Cache Maven dependencies
         uses: actions/cache@v3
         with:
@@ -44,25 +42,21 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-maven-
 
-      # Step 3: Set up JDK (Adoptium Temurin)
       - name: Set up JDK (Adoptium Temurin)
         uses: actions/setup-java@v2
         with:
           java-version: '21'
           distribution: 'temurin'
 
-      # Step 4: Install Maven
       - name: Install Maven
         run: |
           sudo apt update
           sudo apt install maven
 
-      # Step 5: Install project dependencies
       - name: Install Dependencies (Maven)
         run: |
           mvn clean install
 
-      # Step 6: Verify secrets are set (without exposing them)
       - name: Verify secrets are set (without exposing them)
         run: |
           echo "Verifying secrets are available without revealing sensitive data"
@@ -73,83 +67,46 @@ jobs:
             echo "USER_PASSWORD is not set"
           fi
 
-      # Step 7: Run the selected Cucumber Feature file or all feature files
       - name: Run Cucumber Feature
         id: run_tests
         run: |
           echo "Running feature files based on input: ${{ github.event.inputs.feature }}"
           if [ "${{ github.event.inputs.feature }}" == "all" ]; then
-            mvn test -Dcucumber.options="classpath:features" # Generates a cucumber.json report
+            mvn clean test -Dcucumber.options="classpath:features"
           else
-            mvn test -Dcucumber.options="classpath:features/${{ github.event.inputs.feature }}.feature"
+            mvn clean test -Dcucumber.options="classpath:features/${{ github.event.inputs.feature }}.feature"
           fi
           echo "Test execution completed"
 
-      # Step 8: Debug - Check cucumber.json content to verify it's generated
-      - name: Debug - Check cucumber.json
+      - name: Check for cucumber.json file
         run: |
-          if [ -f target/cucumber.json ]; then
-            echo "Found cucumber.json"
-            cat target/cucumber.json
-          else
-            echo "cucumber.json not found!"
-          fi
-
-      # Step 9: Parse Cucumber Test Results and count passed/failed scenarios
-      - name: Parse Cucumber Test Results
-        id: parse_results
-        run: |
-          # Install jq to parse JSON
-          sudo apt-get install jq
-
-          # Initialize variables for the email body
-          EMAIL_BODY="Feature Files Executed:\n\n"
-          TOTAL_PASSED=0
-          TOTAL_FAILED=0
-
-          # Check if cucumber.json exists
           if [ ! -f target/cucumber.json ]; then
-            echo "cucumber.json file not found, aborting parsing."
+            echo "cucumber.json file not found! Aborting."
             exit 1
           fi
 
-          # Loop through each feature file and count the passed/failed scenarios
-          FEATURE_FILES=$(jq -r '.elements[].name' target/cucumber.json | sort | uniq)
+      - name: Install jq to parse JSON
+        run: |
+          sudo apt-get install jq
 
-          echo "Feature Files found: $FEATURE_FILES"
+      - name: Parse cucumber.json results
+        run: |
+          echo "Parsing cucumber.json"
+          cat target/cucumber.json | jq '.'
 
-          for FEATURE in $FEATURE_FILES; do
-            FEATURE_NAME=$FEATURE
-
-            # Count passed and failed steps for each feature file
-            PASSED=$(jq --arg FEATURE_NAME "$FEATURE_NAME" \
-              '[.elements[] | select(.name == $FEATURE_NAME) | .steps[] | select(.result == "passed")]' target/cucumber.json | wc -l)
-
-            FAILED=$(jq --arg FEATURE_NAME "$FEATURE_NAME" \
-              '[.elements[] | select(.name == $FEATURE_NAME) | .steps[] | select(.result == "failed")]' target/cucumber.json | wc -l)
-
-            # Append the feature file result to the email body
-            EMAIL_BODY="$EMAIL_BODY$FEATURE_NAME\nScenarios Passed: $PASSED\nScenarios Failed: $FAILED\n\n"
-
-            # Update total passed and failed counters
-            TOTAL_PASSED=$((TOTAL_PASSED + PASSED))
-            TOTAL_FAILED=$((TOTAL_FAILED + FAILED))
-          done
-
-          # Append the total passed/failed scenarios to the email body
-          EMAIL_BODY="$EMAIL_BODY\nTotal Scenarios Passed: $TOTAL_PASSED\nTotal Scenarios Failed: $TOTAL_FAILED"
-
-          # Capture the email body as an environment variable for later use
-          echo "EMAIL_BODY=$EMAIL_BODY" >> $GITHUB_ENV
-
-      # Step 10: Send Test Result Email using SendGrid API
       - name: Send Test Result Email
         if: ${{ always() }}  # Ensure it runs even if tests fail
         run: |
-          # Debugging - Check the content of EMAIL_BODY before sending
-          echo "Sending the following email content:"
-          echo "$EMAIL_BODY"
-
+          if [ "${{ steps.run_tests.outcome }}" == "success" ]; then
+            STATUS="PASS"
+            SUBJECT="Tests Passed"
+            BODY="All tests passed successfully."
+          else
+            STATUS="FAIL"
+            SUBJECT="Tests Failed"
+            BODY="Some tests failed. Please check the logs for details."
+          fi
+          
           # Send email using SendGrid API
           curl -X POST "https://api.sendgrid.com/v3/mail/send" \
             -H "Authorization: Bearer $SENDGRID_API_KEY" \
@@ -157,11 +114,11 @@ jobs:
             -d '{
               "personalizations": [{
                 "to": [{"email": "'"${{ secrets.RECIPIENT_EMAIL }}"'"}],
-                "subject": "Test Execution Summary"
+                "subject": "'"$SUBJECT"'"
               }],
               "from": {"email": "'"${{ secrets.SENDGRID_SENDER_EMAIL }}"'"},
               "content": [{
                 "type": "text/plain",
-                "value": "'"${{ env.EMAIL_BODY }}"'"
+                "value": "'"$BODY"'"
               }]
             }'
