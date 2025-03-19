@@ -90,21 +90,40 @@ jobs:
           sudo apt-get install jq
 
       - name: Parse cucumber.json results
+        id: parse_results
         run: |
           echo "Parsing cucumber.json"
-          cat target/cucumber.json | jq '.'
+          
+          # Extract feature names, passed and failed counts
+          PASSED_SCENARIOS=$(jq '[.features[].elements[] | select(.result.status == "passed")] | length' target/cucumber.json)
+          FAILED_SCENARIOS=$(jq '[.features[].elements[] | select(.result.status == "failed")] | length' target/cucumber.json)
+          
+          FEATURE_NAMES=$(jq -r '[.features[].name] | join(", ")' target/cucumber.json)
+          
+          echo "Feature Files: $FEATURE_NAMES"
+          echo "Passed Scenarios: $PASSED_SCENARIOS"
+          echo "Failed Scenarios: $FAILED_SCENARIOS"
+
+          echo "::set-output name=passed::$(echo $PASSED_SCENARIOS)"
+          echo "::set-output name=failed::$(echo $FAILED_SCENARIOS)"
+          echo "::set-output name=features::$(echo $FEATURE_NAMES)"
 
       - name: Send Test Result Email
         if: ${{ always() }}  # Ensure it runs even if tests fail
         run: |
-          if [ "${{ steps.run_tests.outcome }}" == "success" ]; then
+          # Get parsed results from previous step
+          PASSED="${{ steps.parse_results.outputs.passed }}"
+          FAILED="${{ steps.parse_results.outputs.failed }}"
+          FEATURE_FILES="${{ steps.parse_results.outputs.features }}"
+          
+          if [ "$FAILED" -eq 0 ]; then
             STATUS="PASS"
             SUBJECT="Tests Passed"
-            BODY="All tests passed successfully."
+            BODY="All tests passed successfully.\n\nFeature Files: $FEATURE_FILES\nPassed: $PASSED\nFailed: $FAILED"
           else
             STATUS="FAIL"
             SUBJECT="Tests Failed"
-            BODY="Some tests failed. Please check the logs for details."
+            BODY="Some tests failed. Please check the logs for details.\n\nFeature Files: $FEATURE_FILES\nPassed: $PASSED\nFailed: $FAILED"
           fi
           
           # Send email using SendGrid API
