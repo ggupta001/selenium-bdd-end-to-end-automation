@@ -31,9 +31,11 @@ jobs:
       RECIPIENT_EMAIL: ${{ secrets.RECIPIENT_EMAIL }}
 
     steps:
+      # Step 1: Checkout Repository
       - name: Checkout Repository
         uses: actions/checkout@v3
 
+      # Step 2: Cache Maven dependencies
       - name: Cache Maven dependencies
         uses: actions/cache@v3
         with:
@@ -42,21 +44,25 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-maven-
 
+      # Step 3: Set up JDK (Adoptium Temurin)
       - name: Set up JDK (Adoptium Temurin)
         uses: actions/setup-java@v2
         with:
           java-version: '21'
           distribution: 'temurin'
 
+      # Step 4: Install Maven
       - name: Install Maven
         run: |
           sudo apt update
           sudo apt install maven
 
+      # Step 5: Install Dependencies (Maven)
       - name: Install Dependencies (Maven)
         run: |
           mvn clean install
 
+      # Step 6: Verify secrets are set (without exposing them)
       - name: Verify secrets are set (without exposing them)
         run: |
           echo "Verifying secrets are available without revealing sensitive data"
@@ -67,29 +73,50 @@ jobs:
             echo "USER_PASSWORD is not set"
           fi
 
+      # Step 7: Run the selected Cucumber Feature file or all feature files
       - name: Run Cucumber Feature
         id: run_tests
         run: |
           echo "Running feature files based on input: ${{ github.event.inputs.feature }}"
           if [ "${{ github.event.inputs.feature }}" == "all" ]; then
-            mvn test -Dcucumber.options="classpath:features"
+            mvn test -Dcucumber.options="classpath:features"  # Cucumber will generate a JSON report
           else
             mvn test -Dcucumber.options="classpath:features/${{ github.event.inputs.feature }}.feature"
           fi
           echo "Test execution completed"
 
-      # Step to check the test result and send an email
+      # Step 8: Parse the cucumber.json file to extract scenario counts
+      - name: Parse Cucumber Test Results
+        id: parse_results
+        run: |
+          # Install jq to parse the JSON report
+          sudo apt-get install jq
+
+          # Parse the cucumber JSON report for passed and failed scenarios
+          PASSED=$(jq '.elements[] | select(.status == "passed")' target/cucumber.json | wc -l)
+          FAILED=$(jq '.elements[] | select(.status == "failed")' target/cucumber.json | wc -l)
+          
+          # Capture the results as environment variables
+          echo "PASSED=$PASSED" >> $GITHUB_ENV
+          echo "FAILED=$FAILED" >> $GITHUB_ENV
+
+          # Capture the names of the executed feature files
+          FEATURE_FILES=$(jq '.elements[] | .name' target/cucumber.json | sort | uniq)
+          echo "FEATURE_FILES=$FEATURE_FILES" >> $GITHUB_ENV
+
+      # Step 9: Send the test result email using SendGrid API
       - name: Send Test Result Email
         if: ${{ always() }}  # Ensure it runs even if tests fail
         run: |
-          if [ "${{ steps.run_tests.outcome }}" == "success" ]; then
+          # Construct the email body
+          if [ "$PASSED" -gt 0 ]; then
             STATUS="PASS"
             SUBJECT="Tests Passed"
-            BODY="All tests passed successfully."
+            BODY="Feature Files Executed: $FEATURE_FILES\n\nScenarios Passed: $PASSED\nScenarios Failed: $FAILED"
           else
             STATUS="FAIL"
             SUBJECT="Tests Failed"
-            BODY="Some tests failed. Please check the logs for details."
+            BODY="Feature Files Executed: $FEATURE_FILES\n\nScenarios Passed: $PASSED\nScenarios Failed: $FAILED"
           fi
           
           # Send email using SendGrid API
