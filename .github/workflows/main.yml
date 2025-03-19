@@ -89,6 +89,7 @@ jobs:
       - name: Debug - Check cucumber.json
         run: |
           if [ -f target/cucumber.json ]; then
+            echo "Found cucumber.json"
             cat target/cucumber.json
           else
             echo "cucumber.json not found!"
@@ -106,8 +107,16 @@ jobs:
           TOTAL_PASSED=0
           TOTAL_FAILED=0
 
+          # Check if cucumber.json exists
+          if [ ! -f target/cucumber.json ]; then
+            echo "cucumber.json file not found, aborting parsing."
+            exit 1
+          fi
+
           # Loop through each feature file and count the passed/failed scenarios
           FEATURE_FILES=$(jq -r '.elements[].name' target/cucumber.json | sort | uniq)
+
+          echo "Feature Files found: $FEATURE_FILES"
 
           for FEATURE in $FEATURE_FILES; do
             FEATURE_NAME=$FEATURE
@@ -137,6 +146,10 @@ jobs:
       - name: Send Test Result Email
         if: ${{ always() }}  # Ensure it runs even if tests fail
         run: |
+          # Debugging - Check the content of EMAIL_BODY before sending
+          echo "Sending the following email content:"
+          echo "$EMAIL_BODY"
+
           # Send email using SendGrid API
           curl -X POST "https://api.sendgrid.com/v3/mail/send" \
             -H "Authorization: Bearer $SENDGRID_API_KEY" \
