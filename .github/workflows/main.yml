@@ -85,11 +85,6 @@ jobs:
             exit 1
           fi
 
-      - name: Output cucumber.json contents for verification
-        run: |
-          echo "Contents of cucumber.json:"
-          cat target/cucumber.json
-
       - name: Install jq to parse JSON
         run: |
           sudo apt-get install jq
@@ -97,37 +92,39 @@ jobs:
       - name: Parse cucumber.json results
         id: parse_results
         run: |
-          echo "Parsing cucumber.json"
-          
-          # Verify if the file is empty or not
-          if [ ! -s target/cucumber.json ]; then
-            echo "Error: cucumber.json is empty"
-            exit 1
-          fi
+          # Parse cucumber.json and extract feature name, pass and fail counts
+          FEATURE_RESULTS=$(cat target/cucumber.json | jq -r '.[] | {name: .name, passed: (.elements | map(select(.steps[].result.status == "passed")) | length), failed: (.elements | map(select(.steps[].result.status == "failed")) | length)}')
 
-          # Parse cucumber.json and extract feature, passed and failed steps count.
-          FEATURE_RESULTS=$(cat target/cucumber.json | jq '[.[] | {name: .name, passed: (.elements | map(select(.steps[].result.status == "passed")) | length), failed: (.elements | map(select(.steps[].result.status == "failed")) | length)}]')
+          # Save parsed results as environment variable
+          echo "FEATURE_RESULTS=$FEATURE_RESULTS" >> $GITHUB_ENV
 
-          # Output the parsed results
-          echo "Parsed Results: $FEATURE_RESULTS"
+      - name: Build email body
+        id: build_email_body
+        run: |
+          # Construct the email body with feature names and pass/fail counts
+          BODY="Test Results Summary:\n\n"
 
-          # Set parsed output as an action output for later use
-          echo "::set-output name=feature_results::$FEATURE_RESULTS"
+          # Iterate over the parsed results and build the content for each feature
+          for feature in $(echo "$FEATURE_RESULTS" | jq -r '. | @base64'); do
+            _jq() {
+              echo ${feature} | base64 --decode | jq -r ${1}
+            }
+
+            # Extract values for the email body
+            FEATURE_NAME=$(_jq '.name')
+            PASSED=$(_jq '.passed')
+            FAILED=$(_jq '.failed')
+
+            # Append feature result to the email body
+            BODY="$BODY\nFeature: $FEATURE_NAME\nPassed: $PASSED\nFailed: $FAILED\n"
+          done
+
+          # Save the constructed body into environment variable
+          echo "BODY=$BODY" >> $GITHUB_ENV
 
       - name: Send Test Result Email
         if: ${{ always() }}  # Ensure it runs even if tests fail
         run: |
-          FEATURE_RESULTS="${{ steps.parse_results.outputs.feature_results }}"
-
-          # Initialize the email body
-          BODY="Test Results Summary:\n\n"
-
-          # Loop through the feature results and build the email content
-          # Using jq to iterate over the features and extract name, passed and failed count
-          echo "$FEATURE_RESULTS" | jq -r '.[] | "Feature: \(.name)\nPassed: \(.passed)\nFailed: \(.failed)\n" ' | while read -r line; do
-            BODY="${BODY}\n$line"
-          done
-
           # Send email using SendGrid API
           curl -X POST "https://api.sendgrid.com/v3/mail/send" \
             -H "Authorization: Bearer $SENDGRID_API_KEY" \
@@ -140,6 +137,6 @@ jobs:
               "from": {"email": "'"${{ secrets.SENDGRID_SENDER_EMAIL }}"'"},
               "content": [{
                 "type": "text/plain",
-                "value": "'"$BODY"'"
+                "value": "'"${{ env.BODY }}"'"
               }]
             }'
