@@ -98,8 +98,8 @@ jobs:
           # Output the feature results to debug and verify
           echo "$FEATURE_RESULTS"
 
-          # Prepare the email body with feature names and pass/fail counts
-          BODY="Test Results Summary:\n\n"
+          # Prepare the email body with HTML tags for bold title
+          BODY="<b>Test Results Summary:</b><br><br>"
           
           # Loop through the parsed feature results and append details to BODY
           for feature in $(echo "$FEATURE_RESULTS" | jq -r '. | @base64'); do
@@ -110,7 +110,7 @@ jobs:
             PASSED=$(_jq '.passed')
             FAILED=$(_jq '.failed')
 
-            BODY="$BODY\nFeature: $FEATURE_NAME\nPassed: $PASSED\nFailed: $FAILED\n"
+            BODY="$BODY<br><b>Feature:</b> $FEATURE_NAME<br><b>Passed:</b> $PASSED<br><b>Failed:</b> $FAILED<br><br>"
           done
 
           # Save the final BODY to the environment
@@ -119,7 +119,7 @@ jobs:
       - name: Send Test Result Email
         if: ${{ always() }}  # Ensure it runs even if tests fail
         run: |
-          # Send email using SendGrid API
+          # Send email using SendGrid API with HTML content
           curl -X POST "https://api.sendgrid.com/v3/mail/send" \
             -H "Authorization: Bearer $SENDGRID_API_KEY" \
             -H "Content-Type: application/json" \
@@ -130,7 +130,7 @@ jobs:
               }],
               "from": {"email": "'"${{ secrets.SENDGRID_SENDER_EMAIL }}"'"},
               "content": [{
-                "type": "text/plain",
+                "type": "text/html",
                 "value": "'"${{ env.BODY }}"'"
               }]
             }'
