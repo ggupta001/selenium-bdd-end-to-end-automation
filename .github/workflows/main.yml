@@ -85,8 +85,8 @@ jobs:
             exit 1
           fi
           
-          # Prepare the email body with the report link
-          BODY_CONTENT="Hi team. Kindly find the regression report for BrandsHub.<br><br>"
+          # Prepare the email body with the report link and personalized signature
+          BODY_CONTENT="Hi team. Kindly find the regression report for BrandsHub.<br><br>Thanks and Regards,<br>Gaurav Gupta"
           
           # Send email using SendGrid API with HTML content and the attachment
           curl -X POST "https://api.sendgrid.com/v3/mail/send" \
