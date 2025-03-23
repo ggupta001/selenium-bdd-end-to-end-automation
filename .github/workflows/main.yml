@@ -72,18 +72,21 @@ jobs:
         run: |
           mvn clean test -Dcucumber.options="classpath:features" -DextentReports.outputDir=test-output/PdfReport
 
-      - name: Read Extent Report PDF and Convert to Base64
+      - name: Read Extent Report PDF and Convert to Base64 (Save as File)
         run: |
           EXTENT_REPORT_PATH=test-output/PdfReport/ExtentPdf.pdf
           BASE64_CONTENT=$(base64 -w 0 $EXTENT_REPORT_PATH)
-          echo "BASE64_CONTENT_LENGTH=${#BASE64_CONTENT}"
-          echo "BASE64_CONTENT=$BASE64_CONTENT" >> $GITHUB_ENV
+          echo "$BASE64_CONTENT" > extent_report_base64.txt
+          echo "Base64 content saved to file extent_report_base64.txt"
 
       - name: Send Test Result Email with Extent Report Attachment
         if: ${{ always() }}  # Ensure it runs even if tests fail
         run: |
           # Escape the HTML content
           BODY_CONTENT="Hi team. Kindly find the regression report for BrandsHub.<br><br>"
+
+          # Read the base64 content from the file
+          BASE64_CONTENT=$(cat extent_report_base64.txt)
           
           # Send email using SendGrid API with HTML content and attachment
           curl -X POST "https://api.sendgrid.com/v3/mail/send" \
@@ -105,7 +108,7 @@ jobs:
                   ],
                   "attachments": [
                     {
-                      "content": "'${{ env.BASE64_CONTENT }}'",
+                      "content": "'${BASE64_CONTENT}'",
                       "type": "application/pdf",
                       "filename": "ExtentPdf.pdf",
                       "disposition": "attachment"
