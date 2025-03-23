@@ -76,8 +76,9 @@ jobs:
       - name: Send Test Result Email with Extent Report Attachment
         if: ${{ always() }}  # Ensure it runs even if tests fail
         run: |
-          # Define the updated HTML report path
-          EXTENT_REPORT_PATH="test-output/SparkReport/spark-report.html"
+          # Define the updated HTML report path with today's date
+          TODAY=$(date +'%Y-%m-%d')  # Get today's date in YYYY-MM-DD format
+          EXTENT_REPORT_PATH="test-output/SparkReport/spark-report_${TODAY}.html"
           
           # Check if the file exists before proceeding
           if [ ! -f "$EXTENT_REPORT_PATH" ]; then
@@ -110,7 +111,7 @@ jobs:
                     {
                       "content": "'$(base64 -w 0 $EXTENT_REPORT_PATH)'",
                       "type": "text/html",
-                      "filename": "spark-report.html",
+                      "filename": "Regression-BrandsHub_${TODAY}.html",
                       "disposition": "attachment"
                     }
                   ]
