@@ -3,7 +3,7 @@ name: Run Selenium BDD Feature Files
 on:
   push:
     branches:
-      - master  # Run on push to main (or any branch of your choice)
+      - main  # Run on push to the main branch (or any other branch)
   workflow_dispatch:
     inputs:
       feature:
@@ -86,14 +86,14 @@ jobs:
 
           echo "Test execution completed"
 
-      # Generate the report (You can customize this if you need a specific report generation step)
+      # Generate the report (adjust this step as per your report generation mechanism)
       - name: Generate Test Report
         run: |
-          # Assuming you're generating the report in `target` folder
+          # Assuming you're generating the report in the `target` folder
           echo "Generating report..."
-          mvn clean verify  # You may need to adjust this based on your reporting setup
+          mvn clean verify  # Adjust this as per your setup
 
-      # Send the email with the generated report (if applicable)
+      # Send the email with the generated report
       - name: Send Email with Report
         run: |
           EXTENT_REPORT_PATH="target/ExtentReports/extent-report.html"
