@@ -107,13 +107,16 @@ jobs:
       - name: Generate Extent Report PDF
         run: |
           # Command to generate the extent report, this is an example and should be adjusted to fit your project.
-          mvn clean test -Dcucumber.options="classpath:features" -DextentReports.outputDir=target/extent-reports
+          mvn clean test -Dcucumber.options="classpath:features" -DextentReports.outputDir=test-output/PdfReport
 
       - name: Send Test Result Email with Extent Report Attachment
         if: ${{ always() }}  # Ensure it runs even if tests fail
         run: |
           # Get the PDF report path (adjust to your actual report file path)
-          EXTENT_REPORT_PATH=target/extent-reports/extent-report.pdf
+          EXTENT_REPORT_PATH=test-output/PdfReport/ExtentPdf.pdf
+
+          # Escape the HTML content
+          BODY_CONTENT="Hi team. Kindly find the regression report for BrandsHub.<br><br>"
 
           # Send email using SendGrid API with HTML content and attachment
           curl -X POST "https://api.sendgrid.com/v3/mail/send" \
@@ -130,14 +133,14 @@ jobs:
               "content": [
                 {
                   "type": "text/html",
-                  "value": "'${{ env.BODY }}'"
+                  "value": "'"${BODY_CONTENT}"'"
                 }
               ],
               "attachments": [
                 {
                   "content": "'$(base64 -w 0 $EXTENT_REPORT_PATH)'",
                   "type": "application/pdf",
-                  "filename": "extent-report.pdf",
+                  "filename": "ExtentPdf.pdf",
                   "disposition": "attachment"
                 }
               ]
