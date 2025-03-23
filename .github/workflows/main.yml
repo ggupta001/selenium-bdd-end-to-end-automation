@@ -83,7 +83,7 @@ jobs:
         run: |
           # Define the updated HTML report path with today's date
           TODAY=$(date +'%Y-%m-%d')  # Get today's date in YYYY-MM-DD format
-          EXTENT_REPORT_PATH="test-output/SparkReport/spark-report_${TODAY}.html"
+          EXTENT_REPORT_PATH="test-output/SparkReport/spark-report.html"
           
           # Check if the file exists before proceeding
           if [ ! -f "$EXTENT_REPORT_PATH" ]; then
