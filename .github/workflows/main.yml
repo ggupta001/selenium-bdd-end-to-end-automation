@@ -77,17 +77,13 @@ jobs:
           # Base64 encode the extent report PDF file and save it to a temporary file
           base64 test-output/PdfReport/ExtentPdf.pdf > extent_report_base64.txt
 
-      - name: Read Base64 Content from File
-        id: read_base64
+      - name: Send Test Result Email with Extent Report Attachment
+        if: ${{ always() }}  # Ensure it runs even if tests fail
         run: |
           # Read the base64 content from the file
           BASE64_CONTENT=$(cat extent_report_base64.txt)
           echo "BASE64_CONTENT_LENGTH=${#BASE64_CONTENT}" # Output the length for debugging
-          echo "BASE64_CONTENT=${BASE64_CONTENT}" >> $GITHUB_ENV # Store base64 content as an environment variable
-
-      - name: Send Test Result Email with Extent Report Attachment
-        if: ${{ always() }}  # Ensure it runs even if tests fail
-        run: |
+          
           # Send email using SendGrid API with HTML content and attachment
           curl -X POST "https://api.sendgrid.com/v3/mail/send" \
             -H "Authorization: Bearer $SENDGRID_API_KEY" \
@@ -108,7 +104,7 @@ jobs:
               ],
               "attachments": [
                 {
-                  "content": "'"${{ env.BASE64_CONTENT }}"'",
+                  "content": "'"${BASE64_CONTENT}"'",
                   "type": "application/pdf",
                   "filename": "ExtentPdf.pdf",
                   "disposition": "attachment"
