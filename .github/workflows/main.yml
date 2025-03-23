@@ -1,20 +1,20 @@
 name: Run Selenium BDD Feature Files
 
 on:
-  push:
-    branches:
-      - main  # Change to the branch you want to trigger on
   workflow_dispatch:
     inputs:
       feature:
-        description: 'Select a feature to run'
+        description: 'Select a feature file to run'
         required: true
+        default: 'RegisterPageTest'
         type: choice
         options:
           - RegisterPageTest
           - LoginPageTest
           - all
-        default: 'all'
+  push:
+    branches:
+      - master
 
 permissions:
   contents: read
@@ -29,12 +29,18 @@ jobs:
       SENDGRID_API_KEY: ${{ secrets.SENDGRID_API_KEY }}
       SENDGRID_SENDER_EMAIL: ${{ secrets.SENDGRID_SENDER_EMAIL }}
       RECIPIENT_EMAIL: ${{ secrets.RECIPIENT_EMAIL }}
-      FEATURE: ${{ github.event.inputs.feature }}  # This will get the feature input from workflow_dispatch or push
-      JAVA_HOME: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/21.0.6-7/x64
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v3
+
+      - name: Cache Maven dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
 
       - name: Set up JDK (Adoptium Temurin)
         uses: actions/setup-java@v2
@@ -47,64 +53,65 @@ jobs:
           sudo apt update
           sudo apt install maven
 
+      - name: Install Dependencies (Maven)
+        run: |
+          mvn clean install
+
       - name: Run Cucumber Feature
         id: run_tests
         run: |
-          echo "Running feature files based on input: $FEATURE"
-          
-          # Ensure FEATURE is not empty
-          if [ -z "$FEATURE" ]; then
-            echo "FEATURE is empty, defaulting to 'all'"
-            FEATURE="all"
-          fi
-          
-          if [ "$FEATURE" == "all" ]; then
-            echo "Running all feature files"
+          echo "Running feature files based on input: ${{ github.event.inputs.feature }}"
+          if [ "${{ github.event.inputs.feature }}" == "all" ]; then
             mvn clean test -Dcucumber.options="classpath:features"
-          elif [ "$FEATURE" == "RegisterPageTest" ]; then
-            echo "Running RegisterPageTest feature"
-            mvn clean test -Dcucumber.options="classpath:features/RegisterPageTest.feature"
-          elif [ "$FEATURE" == "LoginPageTest" ]; then
-            echo "Running LoginPageTest feature"
-            mvn clean test -Dcucumber.options="classpath:features/LoginPageTest.feature"
           else
-            echo "Invalid feature selected"
-            exit 1
+            mvn clean test -Dcucumber.options="classpath:features/${{ github.event.inputs.feature }}.feature"
           fi
-
           echo "Test execution completed"
 
-      - name: Generate Test Report
+      - name: Generate Extent Report HTML (Updated Path)
         run: |
-          echo "Generating test report..."
-          mvn clean verify
+          # Generating the report in the updated path: test-output/SparkReport
+          mvn clean test -Dcucumber.options="classpath:features" -DextentReports.outputDir=test-output/SparkReport -DextentReports.reportFormat=html
 
-      - name: Send Email with Report
+      - name: Send Test Result Email with Extent Report Attachment
+        if: ${{ always() }}  # Ensure it runs even if tests fail
         run: |
-          EXTENT_REPORT_PATH="target/ExtentReports/extent-report.html"
+          # Define the updated HTML report path
+          EXTENT_REPORT_PATH="test-output/SparkReport/spark-report.html"
+          
+          # Check if the file exists before proceeding
+          if [ ! -f "$EXTENT_REPORT_PATH" ]; then
+            echo "Extent report not found! Aborting email sending."
+            exit 1
+          fi
+          
+          # Prepare the email body with the report link
+          BODY_CONTENT="Hi team. Kindly find the regression report for BrandsHub.<br><br>"
+          
+          # Send email using SendGrid API with HTML content and the attachment
           curl -X POST "https://api.sendgrid.com/v3/mail/send" \
-            -H "Authorization: Bearer ${{ secrets.SENDGRID_API_KEY }}" \
+            -H "Authorization: Bearer $SENDGRID_API_KEY" \
             -H "Content-Type: application/json" \
             -d '{
-              "personalizations": [
-                {
-                  "to": [{"email": "'"${{ secrets.RECIPIENT_EMAIL }}"'"}],
-                  "subject": "Test Results for Feature: '$FEATURE'"
-                }
-              ],
-              "from": {"email": "'"${{ secrets.SENDGRID_SENDER_EMAIL }}"'"},
-              "content": [
-                {
-                  "type": "text/html",
-                  "value": "Hi team. Kindly find the regression report for '$FEATURE'.<br><br>"
-                }
-              ],
-              "attachments": [
-                {
-                  "content": "'"$(base64 -w 0 $EXTENT_REPORT_PATH)"'",
-                  "type": "application/html",
-                  "filename": "extent-report.html",
-                  "disposition": "attachment"
-                }
-              ]
-            }'
+                  "personalizations": [
+                    {
+                      "to": [{"email": "'${{ secrets.RECIPIENT_EMAIL }}'"}],
+                      "subject": "Regression Test Results for BrandsHub"
+                    }
+                  ],
+                  "from": {"email": "'${{ secrets.SENDGRID_SENDER_EMAIL }}'"},
+                  "content": [
+                    {
+                      "type": "text/html",
+                      "value": "'"${BODY_CONTENT}"'"
+                    }
+                  ],
+                  "attachments": [
+                    {
+                      "content": "'$(base64 -w 0 $EXTENT_REPORT_PATH)'",
+                      "type": "text/html",
+                      "filename": "spark-report.html",
+                      "disposition": "attachment"
+                    }
+                  ]
+                }'
