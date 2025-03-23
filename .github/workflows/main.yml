@@ -1,6 +1,9 @@
 name: Run Selenium BDD Feature Files
 
 on:
+  push:
+    branches:
+      - master  # Run on push to main (or any branch of your choice)
   workflow_dispatch:
     inputs:
       feature:
@@ -26,12 +29,15 @@ jobs:
       SENDGRID_API_KEY: ${{ secrets.SENDGRID_API_KEY }}
       SENDGRID_SENDER_EMAIL: ${{ secrets.SENDGRID_SENDER_EMAIL }}
       RECIPIENT_EMAIL: ${{ secrets.RECIPIENT_EMAIL }}
-      FEATURE: ${{ github.event.inputs.feature }}  # Correctly pass input as environment variable
+      FEATURE: ${{ github.event.inputs.feature }}  # Get the feature input (works for both push and manual trigger)
+      JAVA_HOME: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/21.0.6-7/x64
 
     steps:
+      # Checkout the repository to access the code
       - name: Checkout Repository
         uses: actions/checkout@v3
 
+      # Cache Maven dependencies to speed up the process
       - name: Cache Maven dependencies
         uses: actions/cache@v3
         with:
@@ -40,33 +46,80 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-maven-
 
+      # Set up JDK (Adoptium Temurin)
       - name: Set up JDK (Adoptium Temurin)
         uses: actions/setup-java@v2
         with:
           java-version: '21'
           distribution: 'temurin'
 
+      # Install Maven
       - name: Install Maven
         run: |
           sudo apt update
           sudo apt install maven
 
+      # Install dependencies using Maven
       - name: Install Dependencies (Maven)
         run: |
           mvn clean install
 
+      # Run the selected feature file based on input
       - name: Run Cucumber Feature
         id: run_tests
         run: |
           echo "Running feature files based on input: $FEATURE"
+          
           if [ "$FEATURE" == "all" ]; then
+            echo "Running all feature files"
             mvn clean test -Dcucumber.options="classpath:features"
           elif [ "$FEATURE" == "RegisterPageTest" ]; then
+            echo "Running RegisterPageTest feature"
             mvn clean test -Dcucumber.options="classpath:features/RegisterPageTest.feature"
           elif [ "$FEATURE" == "LoginPageTest" ]; then
+            echo "Running LoginPageTest feature"
             mvn clean test -Dcucumber.options="classpath:features/LoginPageTest.feature"
           else
             echo "Invalid feature selected"
             exit 1
           fi
+
           echo "Test execution completed"
+
+      # Generate the report (You can customize this if you need a specific report generation step)
+      - name: Generate Test Report
+        run: |
+          # Assuming you're generating the report in `target` folder
+          echo "Generating report..."
+          mvn clean verify  # You may need to adjust this based on your reporting setup
+
+      # Send the email with the generated report (if applicable)
+      - name: Send Email with Report
+        run: |
+          EXTENT_REPORT_PATH="target/ExtentReports/extent-report.html"
+          curl -X POST "https://api.sendgrid.com/v3/mail/send" \
+            -H "Authorization: Bearer ${{ secrets.SENDGRID_API_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "personalizations": [
+                {
+                  "to": [{"email": "'"${{ secrets.RECIPIENT_EMAIL }}"'"}],
+                  "subject": "Test Results for Feature: '$FEATURE'"
+                }
+              ],
+              "from": {"email": "'"${{ secrets.SENDGRID_SENDER_EMAIL }}"'"},
+              "content": [
+                {
+                  "type": "text/html",
+                  "value": "Hi team. Kindly find the regression report for '$FEATURE'.<br><br>"
+                }
+              ],
+              "attachments": [
+                {
+                  "content": "'"$(base64 -w 0 $EXTENT_REPORT_PATH)"'",
+                  "type": "application/html",
+                  "filename": "extent-report.html",
+                  "disposition": "attachment"
+                }
+              ]
+            }'
