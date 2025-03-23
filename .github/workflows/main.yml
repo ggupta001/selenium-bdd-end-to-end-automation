@@ -109,11 +109,16 @@ jobs:
           # Command to generate the extent report, this is an example and should be adjusted to fit your project.
           mvn clean test -Dcucumber.options="classpath:features" -DextentReports.outputDir=test-output/PdfReport
 
+      - name: Encode Extent Report PDF to Base64
+        run: |
+          # Base64 encode the extent report PDF file and save it to a temporary file
+          base64 test-output/PdfReport/ExtentPdf.pdf > extent_report_base64.txt
+
       - name: Send Test Result Email with Extent Report Attachment
         if: ${{ always() }}  # Ensure it runs even if tests fail
         run: |
-          # Get the PDF report path (adjust to your actual report file path)
-          EXTENT_REPORT_PATH=test-output/PdfReport/ExtentPdf.pdf
+          # Read the base64 content from the file
+          BASE64_CONTENT=$(cat extent_report_base64.txt)
 
           # Escape the HTML content
           BODY_CONTENT="Hi team. Kindly find the regression report for BrandsHub.<br><br>"
@@ -138,7 +143,7 @@ jobs:
               ],
               "attachments": [
                 {
-                  "content": "'$(base64 -w 0 $EXTENT_REPORT_PATH)'",
+                  "content": "'"${BASE64_CONTENT}"'",
                   "type": "application/pdf",
                   "filename": "ExtentPdf.pdf",
                   "disposition": "attachment"
