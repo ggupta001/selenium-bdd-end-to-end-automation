@@ -29,6 +29,7 @@ jobs:
       SENDGRID_API_KEY: ${{ secrets.SENDGRID_API_KEY }}
       SENDGRID_SENDER_EMAIL: ${{ secrets.SENDGRID_SENDER_EMAIL }}
       RECIPIENT_EMAIL: ${{ secrets.RECIPIENT_EMAIL }}
+      FEATURE: ${{ github.event.inputs.feature }}  # Pass the selected feature option
 
     steps:
       - name: Checkout Repository
@@ -60,12 +61,12 @@ jobs:
       - name: Run Cucumber Feature
         id: run_tests
         run: |
-          echo "Running feature files based on input: ${{ github.event.inputs.feature }}"
-          if [ "${{ github.event.inputs.feature }}" == "all" ]; then
+          echo "Running feature files based on input: $FEATURE"
+          if [ "$FEATURE" == "all" ]; then
             mvn clean test -Dcucumber.options="classpath:features"
-          elif [ "${{ github.event.inputs.feature }}" == "RegisterPageTest" ]; then
+          elif [ "$FEATURE" == "RegisterPageTest" ]; then
             mvn clean test -Dcucumber.options="classpath:features/RegisterPageTest.feature"
-          elif [ "${{ github.event.inputs.feature }}" == "LoginPageTest" ]; then
+          elif [ "$FEATURE" == "LoginPageTest" ]; then
             mvn clean test -Dcucumber.options="classpath:features/LoginPageTest.feature"
           else
             echo "Invalid feature selected"
