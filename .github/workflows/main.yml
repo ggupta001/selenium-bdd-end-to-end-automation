@@ -72,23 +72,43 @@ jobs:
         run: |
           mvn clean test -Dcucumber.options="classpath:features" -DextentReports.outputDir=test-output/PdfReport
 
+      - name: Read Extent Report PDF and Convert to Base64
+        run: |
+          EXTENT_REPORT_PATH=test-output/PdfReport/ExtentPdf.pdf
+          BASE64_CONTENT=$(base64 -w 0 $EXTENT_REPORT_PATH)
+          echo "BASE64_CONTENT_LENGTH=${#BASE64_CONTENT}"
+          echo "BASE64_CONTENT=$BASE64_CONTENT" >> $GITHUB_ENV
+
       - name: Send Test Result Email with Extent Report Attachment
         if: ${{ always() }}  # Ensure it runs even if tests fail
         run: |
-          EXTENT_REPORT_PATH=test-output/PdfReport/ExtentPdf.pdf
-          echo "Sending email with attachment"
-
-          # Send email using SendGrid API with multipart/form-data to attach the PDF
+          # Escape the HTML content
+          BODY_CONTENT="Hi team. Kindly find the regression report for BrandsHub.<br><br>"
+          
+          # Send email using SendGrid API with HTML content and attachment
           curl -X POST "https://api.sendgrid.com/v3/mail/send" \
             -H "Authorization: Bearer $SENDGRID_API_KEY" \
-            -H "Content-Type: multipart/form-data" \
-            -F "personalizations=[{
-              \"to\": [{\"email\": \"${{ secrets.RECIPIENT_EMAIL }}\"}],
-              \"subject\": \"Regression Test Results for BrandsHub\"
-            }]" \
-            -F "from={\"email\": \"${{ secrets.SENDGRID_SENDER_EMAIL }}\"}" \
-            -F "content=[{
-              \"type\": \"text/html\",
-              \"value\": \"Hi team. Kindly find the regression report for BrandsHub.<br><br>\"
-            }]" \
-            -F "attachments[0]=\"@${EXTENT_REPORT_PATH}\";type=application/pdf;filename=ExtentPdf.pdf"
+            -H "Content-Type: application/json" \
+            -d '{
+                  "personalizations": [
+                    {
+                      "to": [{"email": "'${{ secrets.RECIPIENT_EMAIL }}'"}],
+                      "subject": "Regression Test Results for BrandsHub"
+                    }
+                  ],
+                  "from": {"email": "'${{ secrets.SENDGRID_SENDER_EMAIL }}'"},
+                  "content": [
+                    {
+                      "type": "text/html",
+                      "value": "'${BODY_CONTENT}'"
+                    }
+                  ],
+                  "attachments": [
+                    {
+                      "content": "'${{ env.BASE64_CONTENT }}'",
+                      "type": "application/pdf",
+                      "filename": "ExtentPdf.pdf",
+                      "disposition": "attachment"
+                    }
+                  ]
+                }'
