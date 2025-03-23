@@ -12,9 +12,6 @@ on:
           - RegisterPageTest
           - LoginPageTest
           - all
-  push:
-    branches:
-      - master
 
 permissions:
   contents: read
@@ -29,7 +26,7 @@ jobs:
       SENDGRID_API_KEY: ${{ secrets.SENDGRID_API_KEY }}
       SENDGRID_SENDER_EMAIL: ${{ secrets.SENDGRID_SENDER_EMAIL }}
       RECIPIENT_EMAIL: ${{ secrets.RECIPIENT_EMAIL }}
-      FEATURE: ${{ github.event.inputs.feature }}  # Pass the selected feature option
+      FEATURE: ${{ github.event.inputs.feature }}  # Correctly pass input as environment variable
 
     steps:
       - name: Checkout Repository
@@ -73,51 +70,3 @@ jobs:
             exit 1
           fi
           echo "Test execution completed"
-
-      - name: Generate Extent Report HTML (Updated Path)
-        run: |
-          # Generating the report in the updated path: test-output/SparkReport
-          mvn clean test -Dcucumber.options="classpath:features" -DextentReports.outputDir=test-output/SparkReport -DextentReports.reportFormat=html
-
-      - name: Send Test Result Email with Extent Report Attachment
-        if: ${{ always() }}  # Ensure it runs even if tests fail
-        run: |
-          # Define the updated HTML report path
-          EXTENT_REPORT_PATH="test-output/SparkReport/spark-report.html"
-          
-          # Check if the file exists before proceeding
-          if [ ! -f "$EXTENT_REPORT_PATH" ]; then
-            echo "Extent report not found! Aborting email sending."
-            exit 1
-          fi
-          
-          # Prepare the email body with the report link
-          BODY_CONTENT="Hi team. Kindly find the regression report for BrandsHub.<br><br>"
-          
-          # Send email using SendGrid API with HTML content and the attachment
-          curl -X POST "https://api.sendgrid.com/v3/mail/send" \
-            -H "Authorization: Bearer $SENDGRID_API_KEY" \
-            -H "Content-Type: application/json" \
-            -d '{
-                  "personalizations": [
-                    {
-                      "to": [{"email": "'${{ secrets.RECIPIENT_EMAIL }}'"}],
-                      "subject": "Regression Test Results for BrandsHub"
-                    }
-                  ],
-                  "from": {"email": "'${{ secrets.SENDGRID_SENDER_EMAIL }}'"},
-                  "content": [
-                    {
-                      "type": "text/html",
-                      "value": "'"${BODY_CONTENT}"'"
-                    }
-                  ],
-                  "attachments": [
-                    {
-                      "content": "'$(base64 -w 0 $EXTENT_REPORT_PATH)'",
-                      "type": "text/html",
-                      "filename": "spark-report.html",
-                      "disposition": "attachment"
-                    }
-                  ]
-                }'
