@@ -57,16 +57,6 @@ jobs:
         run: |
           mvn clean install
 
-      - name: Verify secrets are set (without exposing them)
-        run: |
-          echo "Verifying secrets are available without revealing sensitive data"
-          if [ -z "$USER_NAME" ]; then
-            echo "USER_NAME is not set"
-          fi
-          if [ -z "$USER_PASSWORD" ]; then
-            echo "USER_PASSWORD is not set"
-          fi
-
       - name: Run Cucumber Feature
         id: run_tests
         run: |
@@ -78,35 +68,8 @@ jobs:
           fi
           echo "Test execution completed"
 
-      - name: Check for cucumber.json file
-        run: |
-          if [ ! -f target/cucumber.json ]; then
-            echo "cucumber.json file not found! Aborting."
-            exit 1
-          fi
-
-      - name: Install jq to parse JSON
-        run: |
-          sudo apt-get install jq
-
-      - name: Parse cucumber.json results
-        id: parse_results
-        run: |
-          # Parse cucumber.json and extract feature name, pass and fail counts
-          FEATURE_RESULTS=$(cat target/cucumber.json | jq -r '.[] | {name: .name, passed: (.elements | map(select(.steps[].result.status == "passed")) | length), failed: (.elements | map(select(.steps[].result.status == "failed")) | length)}')
-          
-          # Output the feature results to debug and verify
-          echo "$FEATURE_RESULTS"
-
-          # Prepare the email body
-          BODY="Hi team. Kindly find the regression report for BrandsHub.<br><br>"
-
-          # Save the final BODY to the environment
-          echo "BODY=$BODY" >> $GITHUB_ENV
-
       - name: Generate Extent Report PDF
         run: |
-          # Command to generate the extent report, this is an example and should be adjusted to fit your project.
           mvn clean test -Dcucumber.options="classpath:features" -DextentReports.outputDir=test-output/PdfReport
 
       - name: Encode Extent Report PDF to Base64
@@ -114,15 +77,17 @@ jobs:
           # Base64 encode the extent report PDF file and save it to a temporary file
           base64 test-output/PdfReport/ExtentPdf.pdf > extent_report_base64.txt
 
-      - name: Send Test Result Email with Extent Report Attachment
-        if: ${{ always() }}  # Ensure it runs even if tests fail
+      - name: Read Base64 Content from File
+        id: read_base64
         run: |
           # Read the base64 content from the file
           BASE64_CONTENT=$(cat extent_report_base64.txt)
+          echo "BASE64_CONTENT_LENGTH=${#BASE64_CONTENT}" # Output the length for debugging
+          echo "BASE64_CONTENT=${BASE64_CONTENT}" >> $GITHUB_ENV # Store base64 content as an environment variable
 
-          # Escape the HTML content
-          BODY_CONTENT="Hi team. Kindly find the regression report for BrandsHub.<br><br>"
-
+      - name: Send Test Result Email with Extent Report Attachment
+        if: ${{ always() }}  # Ensure it runs even if tests fail
+        run: |
           # Send email using SendGrid API with HTML content and attachment
           curl -X POST "https://api.sendgrid.com/v3/mail/send" \
             -H "Authorization: Bearer $SENDGRID_API_KEY" \
@@ -138,12 +103,12 @@ jobs:
               "content": [
                 {
                   "type": "text/html",
-                  "value": "'"${BODY_CONTENT}"'"
+                  "value": "Hi team. Kindly find the regression report for BrandsHub.<br><br>"
                 }
               ],
               "attachments": [
                 {
-                  "content": "'"${BASE64_CONTENT}"'",
+                  "content": "'"${{ env.BASE64_CONTENT }}"'",
                   "type": "application/pdf",
                   "filename": "ExtentPdf.pdf",
                   "disposition": "attachment"
