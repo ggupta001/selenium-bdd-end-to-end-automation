@@ -68,27 +68,20 @@ jobs:
           fi
           echo "Test execution completed"
 
-      - name: Generate Extent Report PDF
+      - name: Generate Extent Report HTML
         run: |
-          mvn clean test -Dcucumber.options="classpath:features" -DextentReports.outputDir=test-output/PdfReport
-
-      - name: Read Extent Report PDF and Convert to Base64 (Save as File)
-        run: |
-          EXTENT_REPORT_PATH=test-output/PdfReport/ExtentPdf.pdf
-          BASE64_CONTENT=$(base64 -w 0 $EXTENT_REPORT_PATH)
-          echo "$BASE64_CONTENT" > extent_report_base64.txt
-          echo "Base64 content saved to file extent_report_base64.txt"
+          mvn clean test -Dcucumber.options="classpath:features" -DextentReports.outputDir=test-output/ExtentReports -DextentReports.reportFormat=html
 
       - name: Send Test Result Email with Extent Report Attachment
         if: ${{ always() }}  # Ensure it runs even if tests fail
         run: |
-          # Escape the HTML content
-          BODY_CONTENT="Hi team. Kindly find the regression report for BrandsHub.<br><br>"
-
-          # Read the base64 content from the file
-          BASE64_CONTENT=$(cat extent_report_base64.txt)
+          # Define the HTML report path
+          EXTENT_REPORT_PATH="test-output/ExtentReports/extent-report.html"
           
-          # Send email using SendGrid API with HTML content and attachment
+          # Prepare the email body with the report link
+          BODY_CONTENT="Hi team. Kindly find the regression report for BrandsHub.<br><br>"
+          
+          # Send email using SendGrid API with HTML content and the attachment
           curl -X POST "https://api.sendgrid.com/v3/mail/send" \
             -H "Authorization: Bearer $SENDGRID_API_KEY" \
             -H "Content-Type: application/json" \
@@ -103,14 +96,14 @@ jobs:
                   "content": [
                     {
                       "type": "text/html",
-                      "value": "'${BODY_CONTENT}'"
+                      "value": "'"${BODY_CONTENT}"'"
                     }
                   ],
                   "attachments": [
                     {
-                      "content": "'${BASE64_CONTENT}'",
-                      "type": "application/pdf",
-                      "filename": "ExtentPdf.pdf",
+                      "content": "'$(base64 -w 0 $EXTENT_REPORT_PATH)'",
+                      "type": "text/html",
+                      "filename": "extent-report.html",
                       "disposition": "attachment"
                     }
                   ]
