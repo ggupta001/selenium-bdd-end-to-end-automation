@@ -98,39 +98,34 @@ jobs:
           # Output the feature results to debug and verify
           echo "$FEATURE_RESULTS"
 
-          # Prepare the email body with HTML tags for bold title
-          BODY="<b>Test Results Summary:</b><br><br>"
-          
-          # Loop through the parsed feature results and append details to BODY
-          for feature in $(echo "$FEATURE_RESULTS" | jq -r '. | @base64'); do
-            _jq() {
-              echo ${feature} | base64 --decode | jq -r ${1}
-            }
-            FEATURE_NAME=$(_jq '.name')
-            PASSED=$(_jq '.passed')
-            FAILED=$(_jq '.failed')
-
-            BODY="$BODY<br><b>Feature:</b> $FEATURE_NAME<br><b>Passed:</b> $PASSED<br><b>Failed:</b> $FAILED<br><br>"
-          done
+          # Prepare the email body
+          BODY="Hi team. Kindly find the regression report for BrandsHub.<br><br>"
 
           # Save the final BODY to the environment
           echo "BODY=$BODY" >> $GITHUB_ENV
 
-      - name: Send Test Result Email
+      - name: Generate Extent Report PDF (Example, Adjust Based on Your Setup)
+        run: |
+          # Command to generate the extent report, this is an example and should be adjusted to fit your project.
+          mvn clean test -Dcucumber.options="classpath:features" -DextentReports.outputDir=target/extent-reports
+
+      - name: Send Test Result Email with Extent Report Attachment
         if: ${{ always() }}  # Ensure it runs even if tests fail
         run: |
-          # Send email using SendGrid API with HTML content
+          # Get the PDF report path (adjust to your actual report file path)
+          EXTENT_REPORT_PATH=target/extent-reports/extent-report.pdf
+
+          # Send email using SendGrid API with HTML content and attachment
           curl -X POST "https://api.sendgrid.com/v3/mail/send" \
             -H "Authorization: Bearer $SENDGRID_API_KEY" \
-            -H "Content-Type: application/json" \
-            -d '{
-              "personalizations": [{
-                "to": [{"email": "'"${{ secrets.RECIPIENT_EMAIL }}"'"}],
-                "subject": "Cucumber Test Results"
-              }],
-              "from": {"email": "'"${{ secrets.SENDGRID_SENDER_EMAIL }}"'"},
-              "content": [{
-                "type": "text/html",
-                "value": "'"${{ env.BODY }}"'"
-              }]
-            }'
+            -H "Content-Type: multipart/form-data" \
+            -F "personalizations=[{
+                \"to\": [{\"email\": \"${{ secrets.RECIPIENT_EMAIL }}\"}],
+                \"subject\": \"Regression Test Results for BrandsHub\"
+              }]" \
+            -F "from={\"email\": \"${{ secrets.SENDGRID_SENDER_EMAIL }}\"}" \
+            -F "content=[{
+                \"type\": \"text/html\",
+                \"value\": \"${{ env.BODY }}\"
+              }]" \
+            -F "attachments[0]=\"@${EXTENT_REPORT_PATH}\""
