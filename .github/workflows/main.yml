@@ -6,7 +6,7 @@ on:
       feature:
         description: 'Select a feature file to run'
         required: true
-        default: 'RegisterPageTest'
+        default: 'all'
         type: choice
         options:
           - RegisterPageTest
@@ -63,8 +63,13 @@ jobs:
           echo "Running feature files based on input: ${{ github.event.inputs.feature }}"
           if [ "${{ github.event.inputs.feature }}" == "all" ]; then
             mvn clean test -Dcucumber.options="classpath:features"
+          elif [ "${{ github.event.inputs.feature }}" == "RegisterPageTest" ]; then
+            mvn clean test -Dcucumber.options="classpath:features/RegisterPageTest.feature"
+          elif [ "${{ github.event.inputs.feature }}" == "LoginPageTest" ]; then
+            mvn clean test -Dcucumber.options="classpath:features/LoginPageTest.feature"
           else
-            mvn clean test -Dcucumber.options="classpath:features/${{ github.event.inputs.feature }}.feature"
+            echo "Invalid feature selected"
+            exit 1
           fi
           echo "Test execution completed"
 
