@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<extentreports>
+    <configuration>
+        <!-- Report Theme: Can be 'standard' or 'dark' -->
+        <theme>STANDARD</theme>
+
+        <!-- Set the encoding for the report -->
+        <encoding>UTF-8</encoding>
+
+        <!-- Base64 encoding for images -->
+        <thumbnailForBase64>true</thumbnailForBase64>
+
+        <!-- Title of the report -->
+        <documentTitle>Test Automation Extent Report</documentTitle>
+
+        <!-- Report Name -->
+        <reportName>E2E-TEST-AUTOMATION-BDD</reportName>
+
+        <!-- Timestamp Format for reports -->
+        <timeStampFormat>MMM dd, yyyy HH:mm:ss</timeStampFormat>
+
+        <!-- Disable timeline feature -->
+        <timelineEnabled>false</timelineEnabled>
+
+        <!-- Disable offline mode -->
+        <enableOfflineMode>false</enableOfflineMode>
+
+        <!-- Custom JavaScript (currently empty) -->
+        <scripts>
+            <![CDATA[$(document).ready(function(){
+            });
+            ]]>
+        </scripts>
+
+        <!-- Custom CSS styles (currently empty) -->
+        <styles><![CDATA[]]></styles>
+    </configuration>
+</extentreports>
