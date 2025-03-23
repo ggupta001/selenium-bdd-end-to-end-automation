@@ -72,42 +72,23 @@ jobs:
         run: |
           mvn clean test -Dcucumber.options="classpath:features" -DextentReports.outputDir=test-output/PdfReport
 
-      - name: Encode Extent Report PDF to Base64
-        run: |
-          # Base64 encode the extent report PDF file and save it to a temporary file
-          base64 test-output/PdfReport/ExtentPdf.pdf > extent_report_base64.txt
-
       - name: Send Test Result Email with Extent Report Attachment
         if: ${{ always() }}  # Ensure it runs even if tests fail
         run: |
-          # Read the base64 content from the file
-          BASE64_CONTENT=$(cat extent_report_base64.txt)
-          echo "BASE64_CONTENT_LENGTH=${#BASE64_CONTENT}" # Output the length for debugging
-          
-          # Send email using SendGrid API with HTML content and attachment
+          EXTENT_REPORT_PATH=test-output/PdfReport/ExtentPdf.pdf
+          echo "Sending email with attachment"
+
+          # Send email using SendGrid API with multipart/form-data to attach the PDF
           curl -X POST "https://api.sendgrid.com/v3/mail/send" \
             -H "Authorization: Bearer $SENDGRID_API_KEY" \
-            -H "Content-Type: application/json" \
-            -d '{
-              "personalizations": [
-                {
-                  "to": [{"email": "'${{ secrets.RECIPIENT_EMAIL }}'"}],
-                  "subject": "Regression Test Results for BrandsHub"
-                }
-              ],
-              "from": {"email": "'${{ secrets.SENDGRID_SENDER_EMAIL }}'"},
-              "content": [
-                {
-                  "type": "text/html",
-                  "value": "Hi team. Kindly find the regression report for BrandsHub.<br><br>"
-                }
-              ],
-              "attachments": [
-                {
-                  "content": "'"${BASE64_CONTENT}"'",
-                  "type": "application/pdf",
-                  "filename": "ExtentPdf.pdf",
-                  "disposition": "attachment"
-                }
-              ]
-            }'
+            -H "Content-Type: multipart/form-data" \
+            -F "personalizations=[{
+              \"to\": [{\"email\": \"${{ secrets.RECIPIENT_EMAIL }}\"}],
+              \"subject\": \"Regression Test Results for BrandsHub\"
+            }]" \
+            -F "from={\"email\": \"${{ secrets.SENDGRID_SENDER_EMAIL }}\"}" \
+            -F "content=[{
+              \"type\": \"text/html\",
+              \"value\": \"Hi team. Kindly find the regression report for BrandsHub.<br><br>\"
+            }]" \
+            -F "attachments[0]=\"@${EXTENT_REPORT_PATH}\";type=application/pdf;filename=ExtentPdf.pdf"
