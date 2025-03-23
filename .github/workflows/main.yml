@@ -3,18 +3,18 @@ name: Run Selenium BDD Feature Files
 on:
   push:
     branches:
-      - main  # Run on push to the main branch (or any other branch)
+      - main  # Change to the branch you want to trigger on
   workflow_dispatch:
     inputs:
       feature:
-        description: 'Select a feature file to run'
+        description: 'Select a feature to run'
         required: true
-        default: 'all'
         type: choice
         options:
           - RegisterPageTest
           - LoginPageTest
           - all
+        default: 'all'
 
 permissions:
   contents: read
@@ -29,46 +29,34 @@ jobs:
       SENDGRID_API_KEY: ${{ secrets.SENDGRID_API_KEY }}
       SENDGRID_SENDER_EMAIL: ${{ secrets.SENDGRID_SENDER_EMAIL }}
       RECIPIENT_EMAIL: ${{ secrets.RECIPIENT_EMAIL }}
-      FEATURE: ${{ github.event.inputs.feature }}  # Get the feature input (works for both push and manual trigger)
+      FEATURE: ${{ github.event.inputs.feature }}  # This will get the feature input from workflow_dispatch or push
       JAVA_HOME: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/21.0.6-7/x64
 
     steps:
-      # Checkout the repository to access the code
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      # Cache Maven dependencies to speed up the process
-      - name: Cache Maven dependencies
-        uses: actions/cache@v3
-        with:
-          path: ~/.m2/repository
-          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
-          restore-keys: |
-            ${{ runner.os }}-maven-
-
-      # Set up JDK (Adoptium Temurin)
       - name: Set up JDK (Adoptium Temurin)
         uses: actions/setup-java@v2
         with:
           java-version: '21'
           distribution: 'temurin'
 
-      # Install Maven
       - name: Install Maven
         run: |
           sudo apt update
           sudo apt install maven
 
-      # Install dependencies using Maven
-      - name: Install Dependencies (Maven)
-        run: |
-          mvn clean install
-
-      # Run the selected feature file based on input
       - name: Run Cucumber Feature
         id: run_tests
         run: |
           echo "Running feature files based on input: $FEATURE"
+          
+          # Ensure FEATURE is not empty
+          if [ -z "$FEATURE" ]; then
+            echo "FEATURE is empty, defaulting to 'all'"
+            FEATURE="all"
+          fi
           
           if [ "$FEATURE" == "all" ]; then
             echo "Running all feature files"
@@ -86,14 +74,11 @@ jobs:
 
           echo "Test execution completed"
 
-      # Generate the report (adjust this step as per your report generation mechanism)
       - name: Generate Test Report
         run: |
-          # Assuming you're generating the report in the `target` folder
-          echo "Generating report..."
-          mvn clean verify  # Adjust this as per your setup
+          echo "Generating test report..."
+          mvn clean verify
 
-      # Send the email with the generated report
       - name: Send Email with Report
         run: |
           EXTENT_REPORT_PATH="target/ExtentReports/extent-report.html"
